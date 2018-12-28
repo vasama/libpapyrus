@@ -1,0 +1,55 @@
+Whitespace: ( [ \t\v\f\r] | '\\' '\r'? '\n' )+ ;
+LineComment: ';' [^/\n] [^\n]* ;
+BlockComment: ';/' ( [^/] | '/' [^;] )* '/;' ;
+LineComment: ';' ;
+DocComment: '{' [^}]* '}' ;
+
+Newline: '\n' ;
+
+fragment word-start-char: [_a-zA-Z] ;
+fragment word-char: [_a-zA-Z0-9] ;
+Word: word-start-char word-char* ;
+
+fragment dec-digit: [0-9] ;
+IntDec: dec-digit+ word-char*;
+
+fragment hex-digit: [0-9a-fA-F] ;
+IntHex: '0x' hex-digit+ ;
+
+Float: dec-digit+ '.' dec-digit+ word-char*;
+
+fragment string-char: '\\"' | [^"] ;
+String: '"' string-char* '"' ;
+
+LParen: '(' ;
+RParen: ')' ;
+LBrack: '[' ;
+RBrack: ']' ;
+
+Colon: ':' ;
+Comma: ',' ;
+Dot: '.' ;
+
+Add: '+' ;
+Sub: '-' ;
+Mul: '*' ;
+Div: '/' ;
+Mod: '%' ;
+
+Eq: '==' ;
+Ne: '!=' ;
+Lt: '<' ;
+Gt: '>' ;
+Le: '<=' ;
+Ge: '>=' ;
+
+Not: '!' ;
+Con: '&&' ;
+Dis: '||' ;
+
+Assign: '=' ;
+AddAssign: '+=' ;
+SubAssign: '-=' ;
+MulAssign: '*=' ;
+DivAssign: '/=' ;
+ModAssign: '%=' ;
