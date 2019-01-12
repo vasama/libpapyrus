@@ -249,9 +249,12 @@ PrintSyntax_Script(Ctx* ctx, const struct Papyrus_Syntax* syntax)
 	Print(ctx, "name: ");
 	PrintLine_String(ctx, script->name);
 
-	Print(ctx, "base: ");
-	PrintFullName(ctx, &script->base);
-	PrintLine(ctx, "");
+	if (script->base.parts.size > 0)
+	{
+		Print(ctx, "base: ");
+		PrintFullName(ctx, &script->base);
+		PrintLine(ctx, "");
+	}
 
 	PrintSyntaxes(ctx, &script->defs);
 }
