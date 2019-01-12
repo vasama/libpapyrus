@@ -8,8 +8,9 @@ endif()
 
 add_library(libpapyrus
 	src/Papyrus.c
-	src/ulex.c
 	src/DumpAST.c
+
+	src/ulex/ulex.c
 )
 target_include_directories(libpapyrus PUBLIC include)
 set_property(TARGET libpapyrus PROPERTY C_STANDARD 99)

@@ -72,7 +72,7 @@ enum Token
 
 #define ulex_token(name) Tok_ ## name
 
-#include "ulex_papyrus.h"
+#include "ulex/ulex_papyrus.h"
 
 
 #define MIN_ALIGN 8
