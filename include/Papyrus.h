@@ -1,5 +1,6 @@
 #pragma once
 
+#include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
 
@@ -9,14 +10,44 @@ enum
 
 	Papyrus_Error_InvalidArgument,
 	Papyrus_Error_OutOfMemory,
-
-	Papyrus_Error_InvalidSyntax,
 };
 typedef uint32_t Papyrus_Error;
 
 struct Papyrus_String
 {
 	const char* data;
+	intptr_t size;
+};
+
+
+struct Papyrus_SyntaxArray
+{
+	const struct Papyrus_Syntax* const* data;
+	intptr_t size;
+};
+
+struct Papyrus_StringArray
+{
+	const struct Papyrus_String* data;
+	intptr_t size;
+};
+
+struct Papyrus_FullName
+{
+	struct Papyrus_StringArray parts;
+};
+
+
+struct Papyrus_Param
+{
+	struct Papyrus_String name;
+	const struct Papyrus_Syntax_Type* type;
+	const struct Papyrus_Syntax* expr;
+};
+
+struct Papyrus_Params
+{
+	const struct Papyrus_Param* data;
 	intptr_t size;
 };
 
@@ -49,7 +80,8 @@ enum
 	Papyrus_Syntax_IntExpr,
 	Papyrus_Syntax_FloatExpr,
 	Papyrus_Syntax_StringExpr,
-	Papyrus_Syntax_BoolExpr,
+	Papyrus_Syntax_BoolExpr_True,
+	Papyrus_Syntax_BoolExpr_False,
 	Papyrus_Syntax_NewExpr,
 
 	Papyrus_Syntax_AsExpr,
@@ -89,162 +121,109 @@ enum
 
 enum
 {
-	Papyrus_Flags_Auto = 0x1,
-	Papyrus_Flags_BetaOnly = 0x2,
-	Papyrus_Flags_Conditional = 0x4,
-	Papyrus_Flags_Const = 0x8,
-	Papyrus_Flags_DebugOnly = 0x10,
-	Papyrus_Flags_Default = 0x20,
-	Papyrus_Flags_Global = 0x40,
-	Papyrus_Flags_Hidden = 0x80,
-	Papyrus_Flags_Mandatory = 0x100,
-	Papyrus_Flags_Native = 0x200,
+	Papyrus_SyntaxFlags_Error = 0x1,
 };
 
 struct Papyrus_Syntax
 {
-	uint32_t kind : 8;
-	uint32_t flags : 4;
-	uint32_t length : 20;
-	uint32_t offset;
+	uint16_t kind;
+	uint16_t flags;
 };
 
 
-struct Papyrus_SyntaxArray
+enum
 {
-	const struct Papyrus_Syntax* const* data;
-	intptr_t size;
+	Papyrus_TypeFlags_Array = 0x1,
 };
 
-struct Papyrus_StringArray
-{
-	const struct Papyrus_String* data;
-	intptr_t size;
-};
-
-struct Papyrus_FullName
-{
-	struct Papyrus_StringArray parts;
-};
-
-
-struct Papyrus_Param
-{
-	struct Papyrus_String name;
-	const struct Papyrus_Syntax* type;
-	const struct Papyrus_Syntax* expr;
-};
-
-struct Papyrus_Params
-{
-	const struct Papyrus_Param* data;
-	intptr_t size;
-};
-
-struct Papyrus_Scope
-{
-	struct Papyrus_SyntaxArray stmts;
-};
-
-
-struct Papyrus_Type
+struct Papyrus_Syntax_Type
 {
 	struct Papyrus_Syntax syntax;
 
 	struct Papyrus_FullName name;
-};
-
-struct Papyrus_ArrayType
-{
-	struct Papyrus_Syntax syntax;
-
-	const struct Papyrus_Syntax* type;
-};
-
-struct Papyrus_Expr
-{
-	struct Papyrus_Syntax syntax;
-};
-
-struct Papyrus_Import
-{
-	struct Papyrus_Syntax syntax;
-
-	struct Papyrus_FullName name;
-};
-
-struct Papyrus_Script
-{
-	struct Papyrus_Syntax syntax;
-
-	struct Papyrus_String name;
-	struct Papyrus_FullName base;
-	struct Papyrus_SyntaxArray defs;
-};
-
-struct Papyrus_State
-{
-	struct Papyrus_Syntax syntax;
-
-	struct Papyrus_String name;
-	struct Papyrus_SyntaxArray defs;
-};
-
-struct Papyrus_Variable
-{
-	struct Papyrus_Syntax syntax;
-
-	const struct Papyrus_Syntax* type;
-	struct Papyrus_String name;
-	const struct Papyrus_Syntax* expr;
-};
-
-struct Papyrus_Function
-{
-	struct Papyrus_Syntax syntax;
-
-	const struct Papyrus_Syntax* type;
-	struct Papyrus_String name;
-	struct Papyrus_Params params;
-	struct Papyrus_Scope scope;
 	uint32_t flags;
 };
 
-struct Papyrus_Property
+
+enum
+{
+	Papyrus_DeclFlags_Auto = 0x1,
+	Papyrus_DeclFlags_BetaOnly = 0x2,
+	Papyrus_DeclFlags_Conditional = 0x4,
+	Papyrus_DeclFlags_Const = 0x8,
+	Papyrus_DeclFlags_DebugOnly = 0x10,
+	Papyrus_DeclFlags_Default = 0x20,
+	Papyrus_DeclFlags_Global = 0x40,
+	Papyrus_DeclFlags_Hidden = 0x80,
+	Papyrus_DeclFlags_Mandatory = 0x100,
+	Papyrus_DeclFlags_Native = 0x200,
+};
+
+struct Papyrus_Syntax_State
 {
 	struct Papyrus_Syntax syntax;
 
-	const struct Papyrus_Syntax* type;
 	struct Papyrus_String name;
+	struct Papyrus_SyntaxArray defs;
+};
+
+struct Papyrus_Syntax_Variable
+{
+	struct Papyrus_Syntax syntax;
+
+	const struct Papyrus_Syntax_Type* type;
+	struct Papyrus_String name;
+	const struct Papyrus_Syntax* expr;
+	uint32_t flags;
+};
+
+struct Papyrus_Syntax_Function
+{
+	struct Papyrus_Syntax syntax;
+
+	const struct Papyrus_Syntax_Type* type;
+	struct Papyrus_String name;
+	struct Papyrus_Params params;
+	struct Papyrus_SyntaxArray scope;
+	uint32_t flags;
+};
+
+struct Papyrus_Syntax_Property
+{
+	struct Papyrus_Syntax syntax;
+
+	const struct Papyrus_Syntax_Type* type;
+	struct Papyrus_String name;
+	uint32_t flags;
 
 	union {
-		const struct Papyrus_Expr* expr;
+		const struct Papyrus_Syntax* expr;
 		struct {
-			const struct Papyrus_Function* get;
-			const struct Papyrus_Function* set;
+			const struct Papyrus_Syntax_Function* get;
+			const struct Papyrus_Syntax_Function* set;
 		};
 	};
 };
 
-struct Papyrus_Event
+struct Papyrus_Syntax_Event
 {
 	struct Papyrus_Syntax syntax;
 
-	const struct Papyrus_Syntax* type;
+	struct Papyrus_FullName typename;
 	struct Papyrus_String name;
 	struct Papyrus_Params params;
-	struct Papyrus_Scope scope;
+	struct Papyrus_SyntaxArray scope;
 	uint32_t flags;
 };
 
-struct Papyrus_CustomEvent
+struct Papyrus_Syntax_CustomEvent
 {
 	struct Papyrus_Syntax syntax;
 
 	struct Papyrus_String name;
 };
 
-struct Papyrus_Struct
+struct Papyrus_Syntax_Struct
 {
 	struct Papyrus_Syntax syntax;
 
@@ -252,7 +231,7 @@ struct Papyrus_Struct
 	struct Papyrus_SyntaxArray vars;
 };
 
-struct Papyrus_Group
+struct Papyrus_Syntax_Group
 {
 	struct Papyrus_Syntax syntax;
 
@@ -262,62 +241,58 @@ struct Papyrus_Group
 };
 
 
-struct Papyrus_ExprStmt
-{
-	struct Papyrus_Syntax syntax;
-	const struct Papyrus_Syntax* expr;
-};
-
-struct Papyrus_ReturnStmt
+struct Papyrus_Syntax_ExprStmt
 {
 	struct Papyrus_Syntax syntax;
 
 	const struct Papyrus_Syntax* expr;
 };
 
-struct Papyrus_IfStmt
+struct Papyrus_Syntax_ReturnStmt
+{
+	struct Papyrus_Syntax syntax;
+
+	const struct Papyrus_Syntax* expr;
+};
+
+struct Papyrus_Syntax_IfStmt
 {
 	struct Papyrus_Syntax syntax;
 
 	const struct Papyrus_Syntax* cond;
-	struct Papyrus_Scope scope;
+	struct Papyrus_SyntaxArray scope;
 	struct {
-		const struct Papyrus_ElseIfClause* const* data;
+		const struct Papyrus_Syntax_ElseIfClause* const* data;
 		intptr_t size;
 	} elifs;
-	const struct Papyrus_ElseClause* else_;
+	const struct Papyrus_Syntax_ElseClause* else_;
 };
 
-struct Papyrus_WhileStmt
+struct Papyrus_Syntax_WhileStmt
 {
 	struct Papyrus_Syntax syntax;
 
 	const struct Papyrus_Syntax* cond;
-	struct Papyrus_Scope scope;
+	struct Papyrus_SyntaxArray scope;
 };
 
-struct Papyrus_ElseIfClause
+struct Papyrus_Syntax_ElseIfClause
 {
 	struct Papyrus_Syntax syntax;
 
 	const struct Papyrus_Syntax* cond;
-	struct Papyrus_Scope scope;
+	struct Papyrus_SyntaxArray scope;
 };
 
-struct Papyrus_ElseClause
+struct Papyrus_Syntax_ElseClause
 {
 	struct Papyrus_Syntax syntax;
 
-	struct Papyrus_Scope scope;
+	struct Papyrus_SyntaxArray scope;
 };
 
 
-struct Papyrus_NoneExpr
-{
-	struct Papyrus_Syntax syntax;
-};
-
-struct Papyrus_AccessExpr
+struct Papyrus_Syntax_AccessExpr
 {
 	struct Papyrus_Syntax syntax;
 
@@ -325,88 +300,75 @@ struct Papyrus_AccessExpr
 	struct Papyrus_String name;
 };
 
-struct Papyrus_NameExpr
+struct Papyrus_Syntax_NameExpr
 {
 	struct Papyrus_Syntax syntax;
 	struct Papyrus_FullName name;
 };
 
-struct Papyrus_NewExpr
+struct Papyrus_Syntax_NewExpr
 {
 	struct Papyrus_Syntax syntax;
+
 	struct Papyrus_FullName name;
 	const struct Papyrus_Syntax* extent;
 };
 
-#define Papyrus_DEFINE_EXPR(name) \
-	struct Papyrus_ ## name ## Expr \
-	{ \
-		struct Papyrus_Syntax syntax; \
-		struct Papyrus_String string; \
-	}
-Papyrus_DEFINE_EXPR(Int);
-Papyrus_DEFINE_EXPR(Float);
-Papyrus_DEFINE_EXPR(String);
-Papyrus_DEFINE_EXPR(Bool);
-#undef Papyrus_DEFINE_EXPR
+struct Papyrus_Syntax_StringExpr
+{
+	struct Papyrus_Syntax syntax;
 
-#define Papyrus_DEFINE_EXPR(name) \
-	struct Papyrus_ ## name ## Expr \
-	{ \
-		struct Papyrus_Syntax syntax; \
-		const struct Papyrus_Syntax* expr; \
-	}
-Papyrus_DEFINE_EXPR(Unary);
-Papyrus_DEFINE_EXPR(Neg);
-Papyrus_DEFINE_EXPR(Not);
-#undef Papyrus_DEFINE_EXPR
+	struct Papyrus_String string;
+};
 
-#define Papyrus_DEFINE_EXPR(name) \
-	struct Papyrus_ ## name ## Expr \
-	{ \
-		struct Papyrus_Syntax syntax; \
-		const struct Papyrus_Syntax* left; \
-		const struct Papyrus_Syntax* right; \
-	}
-Papyrus_DEFINE_EXPR(Binary);
-Papyrus_DEFINE_EXPR(Add);
-Papyrus_DEFINE_EXPR(Sub);
-Papyrus_DEFINE_EXPR(Mul);
-Papyrus_DEFINE_EXPR(Div);
-Papyrus_DEFINE_EXPR(Mod);
-Papyrus_DEFINE_EXPR(Assign);
-Papyrus_DEFINE_EXPR(AddAssign);
-Papyrus_DEFINE_EXPR(SubAssign);
-Papyrus_DEFINE_EXPR(MulAssign);
-Papyrus_DEFINE_EXPR(DivAssign);
-Papyrus_DEFINE_EXPR(ModAssign);
-Papyrus_DEFINE_EXPR(Con);
-Papyrus_DEFINE_EXPR(Dis);
-#undef Papyrus_DEFINE_EXPR
+struct Papyrus_Syntax_UnaryExpr
+{
+	struct Papyrus_Syntax syntax;
 
-#define Papyrus_DEFINE_EXPR(name) \
-	struct Papyrus_ ## name ## Expr \
-	{ \
-		struct Papyrus_Syntax syntax; \
-		const struct Papyrus_Syntax* expr; \
-		const struct Papyrus_Syntax* type; \
-	}
-Papyrus_DEFINE_EXPR(Cast);
-Papyrus_DEFINE_EXPR(As);
-Papyrus_DEFINE_EXPR(Is);
-#undef Papyrus_DEFINE_EXPR
+	const struct Papyrus_Syntax* expr;
+};
 
-#define Papyrus_DEFINE_EXPR(name) \
-	struct Papyrus_ ## name ## Expr \
-	{ \
-		struct Papyrus_Syntax syntax; \
-		const struct Papyrus_Syntax* expr; \
-		struct Papyrus_SyntaxArray args; \
-	}
-Papyrus_DEFINE_EXPR(Invoke);
-Papyrus_DEFINE_EXPR(Call);
-Papyrus_DEFINE_EXPR(Index);
-#undef Papyrus_DEFINE_EXPR
+struct Papyrus_Syntax_BinaryExpr
+{
+	struct Papyrus_Syntax syntax;
+
+	const struct Papyrus_Syntax* left;
+	const struct Papyrus_Syntax* right;
+};
+
+struct Papyrus_Syntax_CastExpr
+{
+	struct Papyrus_Syntax syntax;
+
+	const struct Papyrus_Syntax_Type* type;
+	const struct Papyrus_Syntax* expr;
+};
+
+struct Papyrus_Syntax_InvokeExpr
+{
+	struct Papyrus_Syntax syntax;
+
+	const struct Papyrus_Syntax* expr;
+	struct Papyrus_SyntaxArray args;
+};
+
+
+struct Papyrus_Syntax_Import
+{
+	struct Papyrus_Syntax syntax;
+
+	struct Papyrus_FullName name;
+};
+
+struct Papyrus_Syntax_Script
+{
+	struct Papyrus_Syntax syntax;
+
+	struct Papyrus_String name;
+	struct Papyrus_FullName base;
+	struct Papyrus_SyntaxArray defs;
+	uint32_t flags;
+};
 
 
 struct Papyrus_Allocator
@@ -420,6 +382,7 @@ struct Papyrus_ParserOptions
 {
 	struct Papyrus_Allocator allocator;
 	uintptr_t lexerBufferSize;
+	uintptr_t syntaxBufferInitialSize;
 };
 
 struct Papyrus_Parser;
@@ -432,22 +395,15 @@ Papyrus_Parser_Destroy(struct Papyrus_Parser* parser);
 
 struct Papyrus_ParseOptions
 {
+	// parameters: context, size
 	void*(*allocateSyntax)(void*, uintptr_t);
 	void* allocateSyntaxContext;
-};
 
-struct Papyrus_ParseResult
-{
-	union {
-		const struct Papyrus_Script* script;
-
-		struct {
-			int32_t line;
-			int32_t column;
-		} syntaxError;
-	};
+	// parameters: context, line, column, message
+	void(*reportSyntaxError)(void*, int32_t, int32_t, struct Papyrus_String);
+	void* reportSyntaxErrorContext;
 };
 
 Papyrus_Error
 Papyrus_Parser_Parse(struct Papyrus_Parser* parser, const char* string, intptr_t stringSize,
-	const struct Papyrus_ParseOptions* options, struct Papyrus_ParseResult* out);
+	const struct Papyrus_ParseOptions* options, const struct Papyrus_Syntax_Script** out);
