@@ -1,5 +1,8 @@
-#include "Papyrus.h"
+#include "Papyrus/Arena.h"
+#include "Papyrus/Diagnostics.h"
 #include "Papyrus/DumpAST.h"
+#include "Papyrus/Parser.h"
+#include "Papyrus/SourceMap.h"
 
 #include <errno.h>
 #include <stdint.h>
@@ -8,16 +11,28 @@
 #include <string.h>
 
 static void*
-AllocateSyntax(void* ctx, uintptr_t size)
+AllocatorCallback(void* ctx, void* block, uintptr_t size, uintptr_t newSize)
 {
-	return malloc(size);
+	return realloc(block, newSize);
 }
 
-static void
-ReportSyntaxError(void* ctx, int32_t line,
-	int32_t column, struct Papyrus_String message)
+struct Diagnostics
 {
-	fprintf(stderr, "%d:%d %.*s\n", line, column, (int)message.size, message.data);
+	struct Papyrus_Diagnostics diag;
+	struct Papyrus_SourceMap srcmap;
+};
+
+static void
+Report(struct Papyrus_Diagnostics* diag_, struct Papyrus_SourceRef src,
+	uint32_t code, struct Papyrus_String message)
+{
+	struct Diagnostics* diag = (struct Diagnostics*)diag_;
+
+	struct Papyrus_SourcePos srcpos =
+		Papyrus_SourceMap_GetSourcePos(&diag->srcmap, src.offset);
+
+	fprintf(stderr, "%d:%d %.*s\n", srcpos.line + 1,
+		srcpos.column + 1, (int)message.size, message.data);
 }
 
 int main(int argc, const char* const* argv)
@@ -36,32 +51,34 @@ int main(int argc, const char* const* argv)
 		return 1;
 	}
 
-	char* source = (char*)malloc(1024 * 1024);
-	uintptr_t sourceSize = fread(source, 1, 1024 * 1024, file);
+	struct Papyrus_Allocator allocator = { &AllocatorCallback };
 
-	Papyrus_Error error;
+	struct Papyrus_ArenaPool pool;
+	Papyrus_ArenaPool_Init(&pool, 64 * 1024, allocator);
 
-	struct Papyrus_Parser* parser;
-	if (error = Papyrus_Parser_Create(NULL, &parser))
-	{
-		fputs("failed to create parser", stderr);
-		return 1;
+	struct Papyrus_String source;
+	source.data = (char*)malloc(1024 * 1024);
+	source.size = fread((char*)source.data, 1, 1024 * 1024 - 1, file);
+	((char*)source.data)[source.size] = 0;
+
+	struct Diagnostics diag;
+	diag.diag.report = &Report;
+	Papyrus_SourceMap_Init(&diag.srcmap);
+	Papyrus_SourceMap_SetSource(&diag.srcmap, source, allocator);
+
+	struct Papyrus_SyntaxTree* syntaxTree; {
+		struct Papyrus_ParserOptions options;
+		options.lexerBufferSize = 16 * 1024;
+		options.lexerBuffer = malloc(options.lexerBufferSize);
+		options.allocator = allocator;
+		options.pool = &pool;
+		options.diag = &diag.diag;
+		syntaxTree = Papyrus_Parse(source, &options);
 	}
 
-	struct Papyrus_ParseOptions options;
-	options.allocateSyntax = &AllocateSyntax;
-	options.allocateSyntaxContext = NULL;
-	options.reportSyntaxError = &ReportSyntaxError;
-	options.reportSyntaxErrorContext = NULL;
+	Papyrus_DumpAST(syntaxTree);
 
-	const struct Papyrus_Syntax_Script* script;
-	if (error = Papyrus_Parser_Parse(parser, source, sourceSize, &options, &script))
-	{
-		fputs("parsing failed", stderr);
-		return 1;
-	}
-
-	Papyrus_DumpAST(script);
+	Papyrus_ArenaPool_Destroy(&pool);
 
 	return 0;
 }

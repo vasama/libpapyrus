@@ -7,8 +7,12 @@ if(MSVC)
 endif()
 
 add_library(libpapyrus
-	src/Papyrus.c
+	src/Arena.c
+	src/ObjectGraph.c
+
 	src/DumpAST.c
+	src/Parser.c
+	src/SourceMap.c
 
 	src/ulex/ulex.c
 )

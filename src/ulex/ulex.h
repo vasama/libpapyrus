@@ -35,36 +35,6 @@ ulex_set_source(struct ulex_lexer* lexer,
 	lexer->source_size = source_size;
 }
 
-static inline void
-ulex_set_buffer_size(struct ulex_lexer* lexer, intptr_t buffer_size)
-{
-	lexer->buffer_size = buffer_size;
-}
-
-static inline void
-ulex_set_token_buffer(struct ulex_lexer* lexer, uint32_t* buffer)
-{
-	lexer->trans_buffer = buffer;
-}
-
-static inline void
-ulex_set_offset_buffer(struct ulex_lexer* lexer, uint32_t* buffer)
-{
-	lexer->offset_buffer = buffer;
-}
-
-static inline ulex_token_type*
-ulex_get_tokens(const struct ulex_lexer* lexer)
-{
-	return (ulex_token_type*)lexer->trans_buffer;
-}
-
-static inline uint32_t*
-ulex_get_offsets(const struct ulex_lexer* lexer)
-{
-	return lexer->offset_buffer;
-}
-
 #ifdef __cplusplus
 }
 #endif

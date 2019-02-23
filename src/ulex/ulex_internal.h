@@ -13,10 +13,6 @@ struct ulex_lexer
 	const uint8_t* source;
 	intptr_t source_index;
 	intptr_t source_size;
-
-	uint32_t* trans_buffer;
-	uint32_t* offset_buffer;
-	intptr_t buffer_size;
 };
 
 enum
@@ -34,4 +30,5 @@ enum
 typedef uint32_t ulex_flags;
 
 ulex_error
-ulex_lex(struct ulex_lexer* lexer, ulex_flags flags, intptr_t* out_token_count);
+ulex_lex(struct ulex_lexer* lexer, ulex_flags flags, uint32_t* token_buffer,
+	uint32_t* offset_buffer, intptr_t buffer_size, intptr_t* out_token_count);

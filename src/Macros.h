@@ -16,11 +16,13 @@
 #	define UNLIKELY(...) (__VA_ARGS__)
 #endif
 
-// round x up to a, where a = 2^n
-#define ALIGN(x, a) ((x) + (a) - 1 & -(a))
+#define SIZE(x) (sizeof(x) / (sizeof(*(x))))
 
 #define MIN(a, b) ((a) < (b) ? (a) : (b))
 #define MAX(a, b) ((a) > (b) ? (a) : (b))
+
+// round x up to a, where a = 2^n
+#define ALIGN(x, a) ((x) + (a) - 1 & -(a))
 
 // SWAP(T* a, T* b)
 #define SWAP(a, b) \

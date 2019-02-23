@@ -1,7 +1,8 @@
 #include "ulex_internal.h"
 
 static intptr_t
-lex(struct ulex_lexer* lexer)
+lex(struct ulex_lexer* lexer, uint32_t* __restrict trans_buffer,
+	uint32_t* __restrict offset_buffer, intptr_t buffer_size)
 {
 	const uint32_t* __restrict equiv_table = lexer->equiv_table;
 	const uint32_t* __restrict trans_table = lexer->trans_table;
@@ -12,10 +13,8 @@ lex(struct ulex_lexer* lexer)
 	intptr_t source_offset = lexer->source_index;
 	intptr_t source_size = lexer->source_size;
 
-	uint32_t* __restrict trans_buffer = lexer->trans_buffer;
-	uint32_t* __restrict offset_buffer = lexer->offset_buffer;
 	intptr_t buffer_offset = 0;
-	intptr_t buffer_size = lexer->buffer_size * 4;
+	buffer_size *= 4;
 
 	while ((source_offset < source_size) & (buffer_offset < buffer_size))
 	{
@@ -37,7 +36,8 @@ lex(struct ulex_lexer* lexer)
 }
 
 ulex_error
-ulex_lex(struct ulex_lexer* lexer, ulex_flags flags, intptr_t* out_token_count)
+ulex_lex(struct ulex_lexer* lexer, ulex_flags flags, uint32_t* token_buffer,
+	uint32_t* offset_buffer, intptr_t buffer_size, intptr_t* out_token_count)
 {
 	if (lexer->state == (uint32_t)-1)
 	{
@@ -46,20 +46,19 @@ ulex_lex(struct ulex_lexer* lexer, ulex_flags flags, intptr_t* out_token_count)
 		lexer->state = *(const uint32_t*)((const char*)lexer->trans_table + equiv) & 0xffff;
 	}
 
-	intptr_t token_count = lex(lexer);
+	intptr_t token_count = lex(lexer, token_buffer, offset_buffer, buffer_size);
 
 	// transform transitions to tokens
-	uint32_t* trans_buffer = lexer->trans_buffer;
 	for (intptr_t i = 0; i < token_count; ++i)
-		trans_buffer[i] = (trans_buffer[i] >> 16) & 0xfff;
+		token_buffer[i] = (token_buffer[i] >> 16) & 0xfff;
 
 	int source_end = lexer->source_index == lexer->source_size;
 
 	// handle end of file
 	if ((flags & ulex_flags_chunk) == 0 && source_end)
 	{
-		lexer->trans_buffer[token_count] = lexer->eof_table[lexer->state / 4];
-		lexer->offset_buffer[token_count] = (uint32_t)lexer->source_size;
+		token_buffer[token_count] = lexer->eof_table[lexer->state / 4];
+		offset_buffer[token_count] = (uint32_t)lexer->source_size;
 		++token_count;
 	}
 

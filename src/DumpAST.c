@@ -1,25 +1,26 @@
 #include "Papyrus/DumpAST.h"
 
+#include "Papyrus/Parser.h"
+#include "Papyrus/Syntax.h"
+
 #include <stdarg.h>
 #include <stdbool.h>
 #include <stdint.h>
 #include <stdio.h>
 
-struct Printer
+typedef struct
 {
 	int32_t virtualIndent;
 	int32_t indent;
 	bool printedIndent;
-};
-
-typedef struct Printer Ctx;
+} Ctx;
 
 static const char IndentString[] =
 	"                                                                "
 	"                                                                "
 	"                                                                "
 	"                                                                ";
-enum { MaxIndent = sizeof(IndentString) - 1 };
+enum { MaxIndent = (sizeof(IndentString) - 1) / 2 };
 
 static void
 Enter(Ctx* ctx)
@@ -38,7 +39,7 @@ Exit(Ctx* ctx)
 static void
 PrintIndent(Ctx* ctx)
 {
-	fwrite(IndentString, ctx->indent, 1, stdout);
+	fwrite(IndentString, ctx->indent * 2 , 1, stdout);
 }
 
 static void
@@ -107,33 +108,194 @@ static void
 PrintSyntax(Ctx* ctx, const struct Papyrus_Syntax* syntax);
 
 static void
-PrintFullName(Ctx* ctx, const struct Papyrus_FullName* name)
+PrintSymbol(Ctx* ctx, const struct Papyrus_Syntax_Symbol* symbol)
 {
-	Print_String(ctx, name->parts.data[0]);
-	for (intptr_t i = 1, c = name->parts.size; i < c; ++i)
+	Print_String(ctx, symbol->data[0]);
+	for (intptr_t i = 1, c = symbol->size; i < c; ++i)
 	{
-		struct Papyrus_String string = name->parts.data[i];
+		struct Papyrus_String string = symbol->data[i];
 		Print(ctx, ":%.*s", (int)string.size, string.data);
 	}
 }
 
 static void
-PrintType(Ctx* ctx, const struct Papyrus_Syntax_Type* syntax)
+PrintType(Ctx* ctx, const struct Papyrus_Syntax_Type* type)
 {
-	ALIAS(Type, type);
+	PrintSymbol(ctx, type->symbol);
 
-	PrintFullName(ctx, &type->name);
-	
-	if (type->flags & Papyrus_TypeFlags_Array)
+	if (type->syntax.eflags & Papyrus_Syntax_TypeFlags_Array)
 		Print(ctx, "[]");
 }
 
 static void
-PrintSyntaxes(Ctx* ctx, const struct Papyrus_SyntaxArray* array)
+PrintScope(Ctx* ctx, const struct Papyrus_Syntax_Scope* scope)
 {
-	const struct Papyrus_Syntax* const* data = array->data;
-	for (intptr_t i = 0, c = array->size; i < c; ++i)
+	const struct Papyrus_Syntax* const* data = scope->data;
+	for (intptr_t i = 0, c = scope->size; i < c; ++i)
 		PrintSyntax(ctx, data[i]);
+}
+
+
+static void
+PrintSyntax_NameExpr(Ctx* ctx, const struct Papyrus_Syntax* syntax)
+{
+	Print(ctx, "name: ");
+	PrintSymbol(ctx, AS(NameExpr)->symbol);
+	PrintLine(ctx, "");
+}
+
+static void
+PrintSyntax_ConstExpr(Ctx* ctx, const struct Papyrus_Syntax* syntax)
+{
+	PrintLine_String(ctx, AS(ConstExpr)->string);
+}
+
+static void
+PrintSyntax_NewExpr(Ctx* ctx, const struct Papyrus_Syntax* syntax)
+{
+	ALIAS(NewExpr, new);
+
+	Print(ctx, "type: ");
+	PrintSymbol(ctx, new->name);
+	PrintLine(ctx, "");
+
+	PrintSyntax(ctx, new->extent);
+}
+
+static void
+PrintSyntax_UnaryExpr(Ctx* ctx, const struct Papyrus_Syntax* syntax)
+{
+	PrintSyntax(ctx, AS(UnaryExpr)->expr);
+}
+
+static void
+PrintSyntax_BinaryExpr(Ctx* ctx, const struct Papyrus_Syntax* syntax)
+{
+	PrintSyntax(ctx, AS(BinaryExpr)->left);
+	PrintSyntax(ctx, AS(BinaryExpr)->right);
+}
+
+static void
+PrintSyntax_AccessExpr(Ctx* ctx, const struct Papyrus_Syntax* syntax)
+{
+	ALIAS(AccessExpr, expr);
+
+	Print(ctx, "name: ");
+	PrintLine_String(ctx, expr->name);
+
+	PrintSyntax(ctx, expr->expr);
+}
+
+static void
+PrintSyntax_CastExpr(Ctx* ctx, const struct Papyrus_Syntax* syntax)
+{
+	ALIAS(CastExpr, cast);
+
+	Print(ctx, "type: ");
+	PrintType(ctx, cast->type);
+	PrintLine(ctx, "");
+
+	PrintSyntax(ctx, cast->expr);
+}
+
+static void
+PrintSyntax_CallExpr(Ctx* ctx, const struct Papyrus_Syntax* syntax)
+{
+	ALIAS(CallExpr, expr);
+
+	PrintSyntax(ctx, expr->expr);
+
+	intptr_t argsCount = expr->args.size;
+	if (argsCount > 0)
+	{
+		PrintLine(ctx, "args:");
+		Enter(ctx);
+
+		const struct Papyrus_Syntax* const* args = expr->args.data;
+		for (intptr_t i = 0; i < argsCount; ++i)
+			PrintSyntax(ctx, args[i]);
+
+		Exit(ctx);
+	}
+}
+
+
+static void
+PrintSyntax_ExprStmt(Ctx* ctx, const struct Papyrus_Syntax* syntax)
+{
+	PrintSyntax(ctx, AS(ExprStmt)->expr);
+}
+
+static void
+PrintSyntax_AssignStmt(Ctx* ctx, const struct Papyrus_Syntax* syntax)
+{
+	//TODO: operator
+
+	Print(ctx, "dst: ");
+	Enter(ctx);
+	PrintSyntax(ctx, AS(AssignStmt)->object);
+	Exit(ctx);
+
+	Print(ctx, "src: ");
+	Enter(ctx);
+	PrintSyntax(ctx, AS(AssignStmt)->expr);
+	Exit(ctx);
+}
+
+static void
+PrintSyntax_ReturnStmt(Ctx* ctx, const struct Papyrus_Syntax* syntax)
+{
+	PrintSyntax(ctx, AS(ReturnStmt)->expr);
+}
+
+static void
+PrintSyntax_IfStmt(Ctx* ctx, const struct Papyrus_Syntax* syntax)
+{
+	ALIAS(IfStmt, stmt);
+
+	const char* header = "if:";
+
+	const struct Papyrus_Syntax_IfClause* const* clauses = stmt->clauses.data;
+	for (intptr_t i = 0, c = stmt->clauses.size; i < c; ++i)
+	{
+		const struct Papyrus_Syntax_IfClause* clause = clauses[i];
+
+		PrintLine(ctx, header);
+		Enter(ctx);
+
+		PrintLine(ctx, "cond:");
+		Enter(ctx);
+		PrintSyntax(ctx, clause->cond);
+		Exit(ctx);
+
+		PrintScope(ctx, clause->scope);
+
+		Exit(ctx);
+
+		header = "elif:";
+	}
+
+	const struct Papyrus_Syntax_Scope* elseScope = stmt->elseScope;
+	if (elseScope != NULL)
+	{
+		PrintLine(ctx, "else:");
+		Enter(ctx);
+		PrintScope(ctx, stmt->elseScope);
+		Exit(ctx);
+	}
+}
+
+static void
+PrintSyntax_WhileStmt(Ctx* ctx, const struct Papyrus_Syntax* syntax)
+{
+	ALIAS(WhileStmt, stmt);
+
+	PrintLine(ctx, "cond:");
+	Enter(ctx);
+	PrintSyntax(ctx, stmt->cond);
+	Exit(ctx);
+
+	PrintScope(ctx, stmt->scope);
 }
 
 
@@ -145,10 +307,10 @@ PrintSyntax_Function(Ctx* ctx, const struct Papyrus_Syntax* syntax)
 	Print(ctx, "name: ");
 	PrintLine_String(ctx, func->name);
 
-	const struct Papyrus_Param* params = func->params.data;
-	for (intptr_t i = 0, c = func->params.size; i < c; ++i)
+	const struct Papyrus_Syntax_Param* const* params = func->params->data;
+	for (intptr_t i = 0, c = func->params->size; i < c; ++i)
 	{
-		const struct Papyrus_Param* param = params + i;
+		const struct Papyrus_Syntax_Param* param = params[i];
 
 		Print(ctx, "param: ");
 		PrintLine_String(ctx, param->name);
@@ -162,9 +324,15 @@ PrintSyntax_Function(Ctx* ctx, const struct Papyrus_Syntax* syntax)
 		Exit(ctx);
 	}
 
-	const struct Papyrus_Syntax* const* stmts = func->scope.data;
-	for (intptr_t i = 0, c = func->scope.size; i < c; ++i)
-		PrintSyntax(ctx, stmts[i]);
+	PrintScope(ctx, func->scope);
+}
+
+static void
+PrintSyntax_Import(Ctx* ctx, const struct Papyrus_Syntax* syntax)
+{
+	Print(ctx, "name: ");
+	PrintSymbol(ctx, AS(Import)->symbol);
+	PrintLine(ctx, "");
 }
 
 static void
@@ -179,7 +347,11 @@ PrintSyntax_Property(Ctx* ctx, const struct Papyrus_Syntax* syntax)
 	PrintType(ctx, prop->type);
 	PrintLine(ctx, "");
 
-	if (prop->flags & Papyrus_DeclFlags_Auto)
+	uint32_t autoflags =
+		Papyrus_Syntax_DeclFlags_Auto |
+		Papyrus_Syntax_DeclFlags_AutoReadOnly;
+
+	if (prop->syntax.eflags & autoflags)
 	{
 		const struct Papyrus_Syntax* expr = prop->expr;
 		if (expr != NULL)
@@ -192,11 +364,24 @@ PrintSyntax_Property(Ctx* ctx, const struct Papyrus_Syntax* syntax)
 	}
 	else
 	{
-		const struct Papyrus_Syntax_Function* get = prop->get;
-		if (get != NULL) PrintSyntax(ctx, &get->syntax);
+		PrintScope(ctx, prop->scope);
+	}
+}
 
-		const struct Papyrus_Syntax_Function* set = prop->set;
-		if (set != NULL) PrintSyntax(ctx, &set->syntax);
+static void
+PrintSyntax_ScriptHeader(Ctx* ctx, const struct Papyrus_Syntax* syntax)
+{
+	ALIAS(ScriptHeader, header);
+
+	Print(ctx, "name: ");
+	PrintLine_String(ctx, header->name);
+
+	const struct Papyrus_Syntax_Symbol* base = header->base;
+	if (base != NULL)
+	{
+		Print(ctx, "base: ");
+		PrintSymbol(ctx, base);
+		PrintLine(ctx, "");
 	}
 }
 
@@ -222,284 +407,119 @@ PrintSyntax_Variable(Ctx* ctx, const struct Papyrus_Syntax* syntax)
 	}
 }
 
-static void
-PrintSyntax_Struct(Ctx* ctx, const struct Papyrus_Syntax* syntax)
-{
-	ALIAS(Struct, struct_);
-
-	Print(ctx, "name: ");
-	PrintLine_String(ctx, struct_->name);
-
-	PrintSyntaxes(ctx, &struct_->vars);
-}
-
-static void
-PrintSyntax_Import(Ctx* ctx, const struct Papyrus_Syntax* syntax)
-{
-	Print(ctx, "name: ");
-	PrintFullName(ctx, &AS(Import)->name);
-	PrintLine(ctx, "");
-}
-
-static void
-PrintSyntax_Script(Ctx* ctx, const struct Papyrus_Syntax* syntax)
-{
-	ALIAS(Script, script);
-
-	Print(ctx, "name: ");
-	PrintLine_String(ctx, script->name);
-
-	if (script->base.parts.size > 0)
-	{
-		Print(ctx, "base: ");
-		PrintFullName(ctx, &script->base);
-		PrintLine(ctx, "");
-	}
-
-	PrintSyntaxes(ctx, &script->defs);
-}
-
-
-static void
-PrintSyntax_ExprStmt(Ctx* ctx, const struct Papyrus_Syntax* syntax)
-{
-	PrintSyntax(ctx, AS(ExprStmt)->expr);
-}
-
-static void
-PrintSyntax_ReturnStmt(Ctx* ctx, const struct Papyrus_Syntax* syntax)
-{
-	PrintSyntax(ctx, AS(ReturnStmt)->expr);
-}
-
-static void
-PrintSyntax_IfStmt(Ctx* ctx, const struct Papyrus_Syntax* syntax)
-{
-	ALIAS(IfStmt, stmt);
-
-	PrintLine(ctx, "cond:");
-	Enter(ctx);
-	PrintSyntax(ctx, stmt->cond);
-	Exit(ctx);
-
-	PrintLine(ctx, "body:");
-	Enter(ctx);
-	PrintSyntaxes(ctx, &stmt->scope);
-	Exit(ctx);
-
-	const struct Papyrus_Syntax_ElseIfClause* const* elifs = stmt->elifs.data;
-	for (intptr_t i = 0, c = stmt->elifs.size; i < c; ++i)
-	{
-		const struct Papyrus_Syntax_ElseIfClause* elif = elifs[i];
-
-		PrintLine(ctx, "elif:");
-		Enter(ctx);
-
-		PrintLine(ctx, "cond:");
-		Enter(ctx);
-		PrintSyntax(ctx, elif->cond);
-		Exit(ctx);
-
-		PrintSyntaxes(ctx, &elif->scope);
-
-		Exit(ctx);
-	}
-
-	const struct Papyrus_Syntax_ElseClause* else_ = stmt->else_;
-	if (else_ != NULL)
-	{
-		PrintLine(ctx, "else:");
-		Enter(ctx);
-		PrintSyntaxes(ctx, &else_->scope);
-		Exit(ctx);
-	}
-}
-
-static void
-PrintSyntax_WhileStmt(Ctx* ctx, const struct Papyrus_Syntax* syntax)
-{
-	ALIAS(IfStmt, stmt);
-
-	PrintLine(ctx, "cond:");
-	Enter(ctx);
-	PrintSyntax(ctx, stmt->cond);
-	Exit(ctx);
-
-	PrintSyntaxes(ctx, &stmt->scope);
-}
-
-
-static void
-PrintSyntax_NameExpr(Ctx* ctx, const struct Papyrus_Syntax* syntax)
-{
-	Print(ctx, "name: ");
-	PrintFullName(ctx, &AS(NameExpr)->name);
-	PrintLine(ctx, "");
-}
-
-static void
-PrintSyntax_UnaryExpr(Ctx* ctx, const struct Papyrus_Syntax* syntax)
-{
-	PrintSyntax(ctx, AS(UnaryExpr)->expr);
-}
-
-static void
-PrintSyntax_BinaryExpr(Ctx* ctx, const struct Papyrus_Syntax* syntax)
-{
-	PrintSyntax(ctx, AS(BinaryExpr)->left);
-	PrintSyntax(ctx, AS(BinaryExpr)->right);
-}
-
-static void
-PrintSyntax_StringExpr(Ctx* ctx, const struct Papyrus_Syntax* syntax)
-{
-	PrintLine_String(ctx, AS(StringExpr)->string);
-}
-
-static void
-PrintSyntax_NewExpr(Ctx* ctx, const struct Papyrus_Syntax* syntax)
-{
-	ALIAS(NewExpr, new);
-
-	Print(ctx, "type: ");
-	PrintFullName(ctx, &new->name);
-	PrintLine(ctx, "");
-
-	PrintSyntax(ctx, new->extent);
-}
-
-static void
-PrintSyntax_CastExpr(Ctx* ctx, const struct Papyrus_Syntax* syntax)
-{
-	ALIAS(CastExpr, cast);
-
-	Print(ctx, "type: ");
-	PrintType(ctx, cast->type);
-	PrintLine(ctx, "");
-
-	PrintSyntax(ctx, cast->expr);
-}
-
-static void
-PrintSyntax_InvokeExpr(Ctx* ctx, const struct Papyrus_Syntax* syntax)
-{
-	ALIAS(InvokeExpr, expr);
-
-	PrintSyntax(ctx, expr->expr);
-
-	PrintLine(ctx, "args:");
-	Enter(ctx);
-
-	const struct Papyrus_Syntax* const* args = expr->args.data;
-	for (intptr_t i = 0, c = expr->args.size; i < c; ++i)
-		PrintSyntax(ctx, args[i]);
-
-	Exit(ctx);
-}
-
-static void
-PrintSyntax_AccessExpr(Ctx* ctx, const struct Papyrus_Syntax* syntax)
-{
-	ALIAS(AccessExpr, expr);
-
-	Print(ctx, "name: ");
-	PrintLine_String(ctx, expr->name);
-
-	PrintSyntax(ctx, expr->expr);
-}
-
-
-static void
-PrintSyntax_Empty(Ctx* ctx, const struct Papyrus_Syntax* syntax)
-{
-}
-
 
 static void
 PrintSyntax(Ctx* ctx, const struct Papyrus_Syntax* syntax)
 {
+	void(*print)(Ctx*, const struct Papyrus_Syntax*);
+	struct Papyrus_String kindString;
+
 	switch (syntax->kind)
 	{
-		void(*print)(Ctx*, const struct Papyrus_Syntax*);
-		struct Papyrus_String kindString;
-
-#define KIND2(kind, type) \
+#define KIND(kind, name) \
 	case Papyrus_Syntax_ ## kind: \
-		kindString.data = #kind; \
-		kindString.size = sizeof(#kind) - 1; \
-		print = &PrintSyntax_ ## type; \
+		kindString.data = name; \
+		kindString.size = sizeof(name) - 1; \
+		print = &PrintSyntax_ ## kind; \
 		goto print_syntax;
 
-#define KIND(kind) KIND2(kind, kind)
+		KIND(NameExpr, "name-expr");
+		KIND(ConstExpr, "*expr");
+		KIND(NewExpr, "new-expr");
 
-		KIND(Function);
-		KIND(Property);
-		KIND(Variable);
-		KIND(Struct);
-		KIND(Import);
-		KIND(Script);
+		KIND(UnaryExpr, "*expr");
+		KIND(BinaryExpr, "*expr");
+		KIND(AccessExpr, "access-expr");
+		KIND(CastExpr, "*expr");
+		KIND(CallExpr, "call-expr");
 
-		KIND(ExprStmt);
-		KIND(ReturnStmt);
-		KIND(IfStmt);
-		KIND(WhileStmt);
+		KIND(ExprStmt, "expr-stmt");
+		KIND(AssignStmt, "*assign-stmt");
+		KIND(ReturnStmt, "return-stmt");
+		KIND(IfStmt, "if-stmt");
+		KIND(WhileStmt, "while-stmt");
 
-		KIND2(NoneExpr, Empty);
-		KIND(NameExpr);
-		KIND2(NegExpr, UnaryExpr);
-		KIND2(NotExpr, UnaryExpr);
-		KIND2(DisExpr, UnaryExpr);
-		KIND2(ConExpr, UnaryExpr);
-		KIND2(AddExpr, BinaryExpr);
-		KIND2(SubExpr, BinaryExpr);
-		KIND2(MulExpr, BinaryExpr);
-		KIND2(DivExpr, BinaryExpr);
-		KIND2(ModExpr, BinaryExpr);
-		KIND2(EqExpr, BinaryExpr);
-		KIND2(NeExpr, BinaryExpr);
-		KIND2(LtExpr, BinaryExpr);
-		KIND2(GtExpr, BinaryExpr);
-		KIND2(LeExpr, BinaryExpr);
-		KIND2(GeExpr, BinaryExpr);
-		KIND2(AssignExpr, BinaryExpr);
-		KIND2(AddAssignExpr, BinaryExpr);
-		KIND2(SubAssignExpr, BinaryExpr);
-		KIND2(MulAssignExpr, BinaryExpr);
-		KIND2(DivAssignExpr, BinaryExpr);
-		KIND2(ModAssignExpr, BinaryExpr);
-		KIND2(IntExpr, StringExpr);
-		KIND2(FloatExpr, StringExpr);
-		KIND2(StringExpr, StringExpr);
-		KIND(NewExpr);
-		KIND2(AsExpr, CastExpr);
-		KIND2(IsExpr, CastExpr);
-		KIND2(CallExpr, InvokeExpr);
-		KIND2(IndexExpr, InvokeExpr);
-		KIND(AccessExpr);
+		KIND(Function, "function");
+		KIND(Import, "import");
+		KIND(Property, "property");
+		KIND(ScriptHeader, "script-header");
+		KIND(Variable, "variable");
+
+#undef KIND
 
 	print_syntax:
+		if (kindString.data[0] == '*')
+		{
+			++kindString.data;
+			--kindString.size;
+
+			switch (syntax->ekind)
+			{
+				struct Papyrus_String ekindString;
+
+#define EKIND(ekind, name) \
+	case Papyrus_Syntax_ ## ekind: \
+		ekindString.data = name; \
+		ekindString.size = sizeof(name) - 1; \
+		goto print_ekind;
+
+				EKIND(ConstExpr_None, "none-");
+				EKIND(ConstExpr_Int, "int-");
+				EKIND(ConstExpr_True, "bool-");
+				EKIND(ConstExpr_False, "bool-");
+				EKIND(ConstExpr_Float, "float-");
+				EKIND(ConstExpr_String, "string-");
+
+				EKIND(UnaryExpr_Neg, "neg-");
+				EKIND(UnaryExpr_Not, "not-");
+
+				EKIND(BinaryExpr_Add, "add-");
+				EKIND(BinaryExpr_Sub, "sub-");
+				EKIND(BinaryExpr_Mul, "mul-");
+				EKIND(BinaryExpr_Div, "div-");
+				EKIND(BinaryExpr_Mod, "mod-");
+				EKIND(BinaryExpr_Eq, "eq-");
+				EKIND(BinaryExpr_Ne, "ne-");
+				EKIND(BinaryExpr_Lt, "lt-");
+				EKIND(BinaryExpr_Gt, "gt-");
+				EKIND(BinaryExpr_Le, "le-");
+				EKIND(BinaryExpr_Ge, "ge-");
+				EKIND(BinaryExpr_Con, "and-");
+				EKIND(BinaryExpr_Dis, "or-");
+				EKIND(BinaryExpr_Index, "index-");
+
+				EKIND(CastExpr_As, "as-");
+				EKIND(CastExpr_Is, "is-");
+
+#undef EKIND
+
+			print_ekind:
+				Print_String(ctx, ekindString);
+			}
+		}
 		PrintLine_String(ctx, kindString);
 		Enter(ctx);
 		print(ctx, syntax);
 		Exit(ctx);
 		break;
 
-#undef KIND
-
 	default:
 		PrintLine(ctx, "?");
-		break;
+		return;
 	}
 }
 
 
 void
-Papyrus_DumpAST(const struct Papyrus_Syntax_Script* script)
+Papyrus_DumpAST(struct Papyrus_SyntaxTree* tree)
 {
-	struct Printer printer;
-	printer.virtualIndent = 0;
-	printer.indent = 0;
-	printer.printedIndent = false;
+	Ctx ctx;
+	ctx.virtualIndent = 0;
+	ctx.indent = 0;
+	ctx.printedIndent = false;
 
-	PrintSyntax(&printer, &script->syntax);
+	PrintLine(&ctx, "script");
+	Enter(&ctx);
+	PrintScope(&ctx, tree->script->scope);
+	Exit(&ctx);
 }
