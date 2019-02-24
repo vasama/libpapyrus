@@ -8,6 +8,7 @@ endif()
 
 add_library(libpapyrus
 	src/Arena.c
+	src/Array.c
 	src/ObjectGraph.c
 
 	src/DumpAST.c
