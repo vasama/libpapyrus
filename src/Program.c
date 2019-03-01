@@ -94,7 +94,7 @@ Papyrus_Program_AddScript(struct Papyrus_Program* program,
 		&GetSymbol(&publicScript->symbol)->list);
 
 	// for each symbol exported by the script
-	FOREACHV_S(sym, sym_i, struct Papyrus_Symbol*, &script->public.exports)
+	FOREACHV_S(sym, sym_i, &script->public.exports)
 	{
 		struct LinkSymbol* linkSymbol = GetLinkSymbol(program, sym->name);
 
@@ -118,7 +118,7 @@ Papyrus_Program_AddScript(struct Papyrus_Program* program,
 	}
 
 	// for each external symbol used in the script
-	FOREACHV_S(ext, ext_i, struct Papyrus_Extern*, &script->externs)
+	FOREACHV_S(ext, ext_i, &script->externs)
 	{
 		struct Papyrus_Symbol* symbol = &ext->symbol;
 		struct LinkSymbol* linkSymbol = GetLinkSymbol(program, symbol->name);
@@ -140,13 +140,13 @@ Papyrus_Program_RemoveScript(struct Papyrus_Program* program,
 	struct ScriptInternal* script = (struct ScriptInternal*)publicScript;
 	
 	// for each external symbol used in the script
-	FOREACHV_S(ext, ext_i, struct Papyrus_Extern*, &script->externs)
+	FOREACHV_S(ext, ext_i, &script->externs)
 	{
 		List_Remove(&GetSymbol(&ext->symbol)->list);
 	}
 
 	// for each symbol exported by the script
-	FOREACHV_S(sym, sym_i, struct Papyrus_Symbol*, &script->public.exports)
+	FOREACHV_S(sym, sym_i, &script->public.exports)
 	{
 		struct Symbol* internal = GetSymbol(sym);
 		struct LinkSymbol* linkSymbol = internal->link;

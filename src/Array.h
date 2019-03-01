@@ -8,6 +8,8 @@ allocators must be given. */
 
 #include "Papyrus/Allocator.h"
 
+#include "Macros.h"
+
 #include <stdint.h>
 #include <string.h>
 
@@ -158,31 +160,32 @@ Array_Clear(struct Array* array)
 versions of the generic functions. */
 #define Array_DEFINE(name, type) \
 	Array_DEFINE_(name, type) \
-	static inline type* name ## _Data(struct Array* array) \
+	static inline UNUSED type* name ## _Data(struct Array* array) \
 	{ \
 		return (type*)array->beg; \
 	} \
-	static inline type const* name ## _DataConst(const struct Array* array) \
+	static inline UNUSED type const* name ## _DataConst( \
+		const struct Array* array) \
 	{ \
 		return (type const*)array->beg; \
 	} \
-	static inline type* name ## _Last(struct Array* array) \
+	static inline UNUSED type* name ## _Last(struct Array* array) \
 	{ \
 		return (type*)array->cur - 1; \
 	} \
-	static inline type* name ## _Extend(struct Array* array, \
+	static inline UNUSED type* name ## _Extend(struct Array* array, \
 		intptr_t count, struct Papyrus_Allocator allocator) \
 	{ \
 		return (type*)Array_Extend(array, \
 			(uintptr_t)count * sizeof(type), allocator); \
 	} \
-	static inline type* name ## _Append(struct Array* array, \
+	static inline UNUSED type* name ## _Append(struct Array* array, \
 		type const* element, struct Papyrus_Allocator allocator) \
 	{ \
 		return (type*)Array_Append( \
 			array, element, sizeof(type), allocator); \
 	} \
-	static inline type* name ## _Insert( \
+	static inline UNUSED type* name ## _Insert( \
 		struct Array* array, intptr_t index, type const* element, \
 		struct Papyrus_Allocator allocator) \
 	{ \
@@ -190,12 +193,13 @@ versions of the generic functions. */
 			(uintptr_t)index * sizeof(type), \
 			element, sizeof(type), allocator); \
 	} \
-	static inline void name ## _Remove(struct Array* array, intptr_t index) \
+	static inline UNUSED void name ## _Remove( \
+		struct Array* array, intptr_t index) \
 	{ \
 		Array_Remove(array, \
 			(uintptr_t)index * sizeof(type), sizeof(type)); \
 	} \
-	static inline void name ## _Resize(struct Array* array, \
+	static inline UNUSED void name ## _Resize(struct Array* array, \
 		intptr_t size, struct Papyrus_Allocator allocator) \
 	{ \
 		Array_Resize(array, \
@@ -204,43 +208,44 @@ versions of the generic functions. */
 
 #define Array_DEFINE_STACK(name, type) \
 	Array_DEFINE_(name, type) \
-	static inline type* name ## _Peek(struct Array* array) \
+	static inline UNUSED type* name ## _Peek(struct Array* array) \
 	{ \
 		return (type*)array->cur - 1; \
 	} \
-	static inline type const* name ## _PeekConst(const struct Array* array) \
+	static inline UNUSED type const* name ## _PeekConst( \
+		const struct Array* array) \
 	{ \
 		return (type const*)array->cur - 1; \
 	} \
-	static inline type* name ## _PeekRange( \
+	static inline UNUSED type* name ## _PeekRange( \
 		struct Array* array, intptr_t size) \
 	{ \
 		return (type*)array->cur - size; \
 	} \
-	static inline type const* name ## _PeekRangeConst( \
+	static inline UNUSED type const* name ## _PeekRangeConst( \
 		const struct Array* array, intptr_t size) \
 	{ \
 		return (type const*)array->cur - size; \
 	} \
-	static inline void name ## _Push(struct Array* array, \
+	static inline UNUSED void name ## _Push(struct Array* array, \
 		type const* element, struct Papyrus_Allocator allocator) \
 	{ \
 		Array_Append(array, element, sizeof(type), allocator); \
 	} \
-	static inline void name ## _PushRange( \
+	static inline UNUSED void name ## _PushRange( \
 		struct Array* array, type const* data, \
 		intptr_t size, struct Papyrus_Allocator allocator) \
 	{ \
 		Array_Append(array, data, \
 			(uintptr_t)size * sizeof(type), allocator); \
 	} \
-	static inline type name ## _Pop(struct Array* array) \
+	static inline UNUSED type name ## _Pop(struct Array* array) \
 	{ \
 		type* element = (type*)array->cur - 1; \
 		array->cur = (char*)element; \
 		return *element; \
 	} \
-	static inline void name ## _PopRange( \
+	static inline UNUSED void name ## _PopRange( \
 		struct Array* array, intptr_t size, void* out) \
 	{ \
 		type* data = (type*)array->cur - size; \
@@ -250,20 +255,31 @@ versions of the generic functions. */
 	}
 
 #define Array_DEFINE_(name, type) \
-	static inline intptr_t name ## _Size(const struct Array* array) \
+	static inline UNUSED intptr_t name ## _Size(const struct Array* array) \
 	{ \
 		return (intptr_t)((uintptr_t)( \
 			array->cur - array->beg) / sizeof(type)); \
 	} \
-	static inline intptr_t name ## _Capacity( \
+	static inline UNUSED intptr_t name ## _Capacity( \
 		const struct Array* array) \
 	{ \
 		return (intptr_t)((uintptr_t)( \
 			array->end - array->beg) / sizeof(type)); \
 	} \
-	static inline void name ## _Reserve(struct Array* array, \
+	static inline UNUSED void name ## _Reserve(struct Array* array, \
 		intptr_t minCapacity, struct Papyrus_Allocator allocator) \
 	{ \
 		Array_Reserve(array, \
 			(uintptr_t)minCapacity * sizeof(type), allocator); \
 	}
+
+#define Array_FOREACH_getp(x, t) (t*)Array_Data(x)
+#define Array_FOREACH_getc(x, t) Array_Size(x) / sizeof(t)
+
+#define Array_FOREACH(xvar, ivar, type, array) \
+	FOREACHP_(xvar, ivar, type, struct Array*, \
+		array, Array_FOREACH_getp, Array_FOREACH_getc)
+
+#define Array_FOREACHV(xvar, ivar, type, array) \
+	FOREACHV_(xvar, ivar, type, struct array*, \
+		array, Array_FOREACH_getp, Array_FOREACH_getc)

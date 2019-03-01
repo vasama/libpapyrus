@@ -56,6 +56,3 @@ Papyrus_Script_SetExtern(struct Papyrus_Script* script,
 
 void
 Papyrus_Script_Invalidate(struct Papyrus_Script* script);
-
-struct Papyrus_Expr
-Papyrus_EvaluateExpr(struct Papyrus_Expr expr, struct Arena* arena);

@@ -805,7 +805,7 @@ BuildStmt_IfStmt(BCtx* ctx, SYNTAX(IfStmt)* syntax)
 	struct Papyrus_Branch* branches =
 		AllocateArray(ctx, struct Papyrus_Branch, branchCount);
 
-	FOREACHV_S(x, i, SYNTAX(IfClause)*, &syntax->clauses)
+	FOREACHV_S(x, i, &syntax->clauses)
 	{
 		struct Papyrus_Branch* branch = branches + i;
 		branch->expr = BuildExpr(ctx, x->cond);
@@ -915,7 +915,7 @@ BuildScope(BCtx* ctx, SYNTAX(Scope)* syntax)
 			&ctx->scopeStatementCount, ctx->common.allocator);
 		ctx->scopeStatementCount = 0;
 
-		FOREACHV_S(stmt, stmt_i, Syntax*, syntax)
+		FOREACHV_S(stmt, stmt_i, syntax)
 		{
 			BuildStmt(ctx, stmt);
 		}
@@ -935,15 +935,13 @@ BuildScope(BCtx* ctx, SYNTAX(Scope)* syntax)
 
 	/* exit scope */ {
 		intptr_t shadowCount = ctx->locals.shadowCount;
-
-		for (intptr_t i = 0; i < shadowCount;)
+		for (intptr_t i = 0; i < shadowCount; ++i)
 		{
 			intptr_t index = IntptrStack_Pop(&ctx->locals.shadowStack);
 			struct Papyrus_TypX* type =
 				TypeStack_Pop(&ctx->locals.shadowStack);
 			TypeArray_Data(&ctx->locals.types)[index] = type;
 		}
-
 		ctx->locals.shadowCount = IntptrStack_Pop(&ctx->locals.shadowStack);
 	}
 
@@ -1030,7 +1028,7 @@ BuildProperty(BCtx* ctx, SYNTAX(Property)* syntax)
 	}
 	else
 	{
-		FOREACHV_S(x, x_i, const struct Papyrus_Syntax*, syntax->scope)
+		FOREACHV_S(x, x_i, syntax->scope)
 		{
 			assert(x->kind == Papyrus_Syntax_Function);
 			SYNTAX(Function)* functionSyntax = (SYNTAX(Function)*)x;
@@ -1111,7 +1109,7 @@ TypeFunction(BCtx* ctx, struct Function* function)
 			struct Papyrus_TypX** paramTypes =
 				AllocateArray(ctx, struct Papyrus_TypX*, paramCount);
 
-			FOREACHV_S(x, i, SYNTAX(Param)*, paramListSyntax)
+			FOREACHV_S(x, i, paramListSyntax)
 			{
 				struct Papyrus_TypX* type = ResolveType(ctx, x->type);
 
@@ -1155,7 +1153,7 @@ TypeProperty(BCtx* ctx, struct Property* property)
 	SYNTAX(Property)* syntax = property->syntax;
 	property->syntax = NULL;
 
-	property->public.type = ResolveType(ctx, property->syntax->type);
+	property->public.type = ResolveType(ctx, syntax->type);
 
 	
 }
@@ -1171,7 +1169,7 @@ BuildScript(BCtx* ctx, struct Script* script, SYNTAX(Script)* scriptSyntax)
 	SYNTAX(ScriptHeader)* headerSyntax = NULL;
 
 	SYNTAX(Scope)* scopeSyntax = scriptSyntax->scope;
-	FOREACHV_S(syntax, syntax_i, Syntax*, scopeSyntax)
+	FOREACHV_S(syntax, syntax_i, scopeSyntax)
 	{
 		switch (syntax->kind)
 		{
@@ -1216,6 +1214,7 @@ BuildScript(BCtx* ctx, struct Script* script, SYNTAX(Script)* scriptSyntax)
 
 				DECLARATION(Function);
 				DECLARATION(Variable);
+				DECLARATION(Property);
 #undef DECLARATION
 #endif
 
@@ -1261,16 +1260,19 @@ BuildScript(BCtx* ctx, struct Script* script, SYNTAX(Script)* scriptSyntax)
 	CommitArray(ctx, &ctx->properties, &script->internal.public.properties);
 	CommitArray(ctx, &ctx->externs, &script->internal.externs);
 
-	FOREACHV_S(x, x_i, struct Papyrus_Variable*,
-		&script->internal.public.variables)
+	FOREACHV_S(x, x_i, &script->internal.public.variables)
 	{
 		TypeVariable(ctx, (struct Variable*)x);
 	}
 
-	FOREACHV_S(x, x_i, struct Papyrus_Function*,
-		&script->internal.public.functions)
+	FOREACHV_S(x, x_i, &script->internal.public.functions)
 	{
 		TypeFunction(ctx, (struct Function*)x);
+	}
+
+	FOREACHV_S(x, x_i, &script->internal.public.properties)
+	{
+		TypeProperty(ctx, (struct Property*)x);
 	}
 }
 
@@ -1413,14 +1415,14 @@ LinkSymbol(ACtx* ctx, struct Papyrus_Symbol* symbol)
 		struct Symbol, list)->symbol;
 }
 
-static struct Papyrus_TypX*
+/*static struct Papyrus_TypX*
 LinkType(ACtx* ctx, struct Papyrus_TypX* type)
 {
 	if (type->kind != Papyrus_Type_Extern)
 		return type;
 
 	return ((struct Papyrus_Extern*)type->symbol)->type;
-}
+}*/
 
 static struct Papyrus_Script*
 FindCommonBase(struct Papyrus_Script* a, struct Papyrus_Script* b)
@@ -1802,6 +1804,7 @@ AnalyzeExpr_Binary(ACtx* ctx, struct Papyrus_Expr* expr)
 			ReportError(ctx, expr->source,
 				"invalid operands to binary operator");
 		}
+		resultType = IntrinsicType(Error);
 	}
 	else switch (expr->kind)
 	{
@@ -1885,7 +1888,7 @@ AnalyzeExpr_Call(ACtx* ctx, struct Papyrus_Expr* expr)
 	struct Papyrus_Expr* callable = expr->call.func;
 	AnalyzeExpr(ctx, callable);
 
-	FOREACHV_S(x, i, struct Papyrus_Expr*, &expr->call.args)
+	FOREACHV_S(x, i, &expr->call.args)
 	{
 		AnalyzeExpr(ctx, x);
 	}
@@ -1945,7 +1948,7 @@ AnalyzeExpr_Call(ACtx* ctx, struct Papyrus_Expr* expr)
 		}
 
 		struct Papyrus_TypX** params = function->signature.paramTypes.data;
-		FOREACHV(x, i, struct Papyrus_Expr*, expr->call.args.data, argsCount)
+		FOREACHV(x, i, expr->call.args.data, argsCount)
 		{
 			struct Papyrus_TypX* argType = x->type;
 			if ((argType->flags & Papyrus_TypeFlags_Error) == 0)
@@ -2076,6 +2079,14 @@ reset:
 		AnalyzeExpr_Binary(ctx, expr);
 		break;
 
+	case Papyrus_Expr_ReadArray:
+		AnalyzeExpr_ReadArray(ctx, expr);
+		break;
+
+	case Papyrus_Expr_WriteArray:
+		AnalyzeExpr_WriteArray(ctx, expr);
+		break;
+
 	case Papyrus_Expr_Cast:
 		// Previous implicit casts are stripped
 		if (expr->flags & Papyrus_ExprFlags_Implicit)
@@ -2119,7 +2130,7 @@ AnalyzeStmt_Return(ACtx* ctx, struct Papyrus_Stmt* stmt)
 static void
 AnalyzeStmt_Branch(ACtx* ctx, struct Papyrus_Stmt* stmt)
 {
-	FOREACH_S(x, i, struct Papyrus_Branch, &stmt->branch)
+	FOREACH_S(x, i, &stmt->branch)
 	{
 		struct Papyrus_Expr* expr = x->expr;
 		if (expr != NULL)
@@ -2158,7 +2169,7 @@ AnalyzeStmt(ACtx* ctx, struct Papyrus_Stmt* stmt)
 static void
 AnalyzeScope(ACtx* ctx, struct Papyrus_Scope scope)
 {
-	FOREACHV_S(x, i, struct Papyrus_Stmt*, &scope)
+	FOREACHV_S(x, i, &scope)
 	{
 		AnalyzeStmt(ctx, x);
 	}
@@ -2185,11 +2196,11 @@ static void
 AnalyzeFunction(ACtx* ctx, struct Papyrus_Function* function)
 {
 	AnalyzeType(ctx, function->signature.returnType);
-	FOREACHV_S(x, x_i, struct Papyrus_TypX*, &function->signature.paramTypes)
+	FOREACHV_S(x, x_i, &function->signature.paramTypes)
 	{
 		AnalyzeType(ctx, x);
 	}
-	FOREACHV_S(x, x_i, struct Papyrus_TypX*, &function->locals)
+	FOREACHV_S(x, x_i, &function->locals)
 	{
 		AnalyzeType(ctx, x);
 	}
@@ -2212,12 +2223,12 @@ Papyrus_Script_Analyze(
 
 	Papyrus_TRY(&ctx.common.except)
 	{
-		FOREACHV_S(x, x_i, struct Papyrus_Variable*, &script->variables)
+		FOREACHV_S(x, x_i, &script->variables)
 		{
 			AnalyzeVariable(&ctx, x);
 		}
 
-		FOREACHV_S(x, x_i, struct Papyrus_Function*, &script->functions)
+		FOREACHV_S(x, x_i, &script->functions)
 		{
 			AnalyzeFunction(&ctx, x);
 		}

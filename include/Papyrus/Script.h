@@ -13,6 +13,12 @@ analyzed and found to be valid may be passed to the codegen APIs. */
 #include <stdint.h>
 #include <string.h>
 
+struct Papyrus_Allocator;
+struct Papyrus_ArenaPool;
+struct Papyrus_Diagnostics;
+struct Papyrus_SyntaxTree;
+
+
 enum
 {
 	Papyrus_Symbol_Intrinsic,

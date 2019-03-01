@@ -9,6 +9,8 @@ required, the same element size must be given. */
 
 #include "Papyrus/Allocator.h"
 
+#include "Macros.h"
+
 #include <stdbool.h>
 #include <stdint.h>
 
@@ -129,19 +131,19 @@ HashTable_Clear(struct HashTable* table, uintptr_t elemSize)
 
 #define HashTable_DEFINE_MAP(name, keytype, valtype, fnhash, fncmp) \
 	struct name ## _Element { keytype key; valtype value; }; \
-	static inline void name ## _Destroy(struct HashTable* table, \
+	static inline void UNUSED name ## _Destroy(struct HashTable* table, \
 		struct Papyrus_Allocator allocator) \
 	{ \
 		HashTable_Destroy(table, \
 			sizeof(struct name ## _Element), allocator); \
 	} \
-	static inline void name ## _Reserve(struct HashTable* table, \
+	static inline void UNUSED name ## _Reserve(struct HashTable* table, \
 		intptr_t minCapacity, struct Papyrus_Allocator allocator) \
 	{ \
 		HashTable_Reserve(table, \
 			sizeof(struct name ## _Element), minCapacity, allocator); \
 	} \
-	static inline valtype* name ## _Find( \
+	static inline valtype* UNUSED name ## _Find( \
 		struct HashTable* table, keytype const* key) \
 	{ \
 		struct name ## _Element* elem = \
@@ -151,7 +153,7 @@ HashTable_Clear(struct HashTable* table, uintptr_t elemSize)
 				(bool(*)(const void*, const void*))&(fncmp)); \
 		return elem != NULL ? &elem->value : NULL; \
 	} \
-	static inline bool name ## _Insert( \
+	static inline bool UNUSED name ## _Insert( \
 		struct HashTable* table, keytype const* key, \
 		struct Papyrus_Allocator* allocator, valtype** out) \
 	{ \
@@ -169,7 +171,7 @@ HashTable_Clear(struct HashTable* table, uintptr_t elemSize)
 		*out = &((struct name ## _Element*)result.elem)->value; \
 		return false; \
 	} \
-	static inline bool name ## _Remove( \
+	static inline bool UNUSED name ## _Remove( \
 		struct HashTable* table, keytype const* key, valtype* out) \
 	{ \
 		return HashTable_Remove(table, key, \
@@ -177,31 +179,31 @@ HashTable_Clear(struct HashTable* table, uintptr_t elemSize)
 			(uintptr_t(*)(const void*))&(fnhash), \
 			(bool(*)(const void*, const void*))&(fncmp), out); \
 	} \
-	static inline void name ## _Clear(struct HashTable* table) \
+	static inline void UNUSED name ## _Clear(struct HashTable* table) \
 	{ \
 		HashTable_Clear(table, sizeof(struct name ## _Element)); \
 	}
 
 #define HashTable_DEFINE_SET(name, type, fnhash, fncmp) \
-	static inline void name ## _Destroy(struct HashTable* table, \
+	static inline void UNUSED name ## _Destroy(struct HashTable* table, \
 		struct Papyrus_Allocator allocator) \
 	{ \
 		HashTable_Destroy(table, sizeof(type), allocator); \
 	} \
-	static inline void name ## _Reserve(struct HashTable* table, \
+	static inline void UNUSED name ## _Reserve(struct HashTable* table, \
 		intptr_t minCapacity, struct Papyrus_Allocator allocator) \
 	{ \
 		HashTable_Reserve(table, \
 			sizeof(type), minCapacity, allocator); \
 	} \
-	static inline type* name ## _Find( \
+	static inline type* UNUSED name ## _Find( \
 		struct HashTable* table, type const* key) \
 	{ \
 		return (type*)HashTable_Find(table, key, \
 			sizeof(type), (uintptr_t(*)(const void*))&(fnhash), \
 			(bool(*)(const void*, const void*))&(fncmp)); \
 	} \
-	static inline bool name ## _Insert( \
+	static inline bool UNUSED name ## _Insert( \
 		struct HashTable* table, type const* key, \
 		struct Papyrus_Allocator* allocator, type** out) \
 	{ \
@@ -218,14 +220,14 @@ HashTable_Clear(struct HashTable* table, uintptr_t elemSize)
 		*out = (type*)result.elem; \
 		return false; \
 	} \
-	static inline bool name ## _Remove( \
+	static inline bool UNUSED name ## _Remove( \
 		struct HashTable* table, type const* key, type* out) \
 	{ \
 		return HashTable_Remove(table, key, \
 			sizeof(type), (uintptr_t(*)(const void*))&(fnhash), \
 			(bool(*)(const void*, const void*))&(fncmp), out); \
 	} \
-	static inline void name ## _Clear(struct HashTable* table) \
+	static inline void UNUSED name ## _Clear(struct HashTable* table) \
 	{ \
 		HashTable_Clear(table, sizeof(type)); \
 	}

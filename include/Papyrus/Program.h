@@ -6,6 +6,9 @@ symbols. */
 
 #include "Papyrus/Allocator.h"
 
+struct Papyrus_Program;
+struct Papyrus_Script;
+
 struct Papyrus_Program*
 Papyrus_Program_Create(struct Papyrus_Allocator allocator);
 

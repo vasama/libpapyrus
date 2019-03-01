@@ -11,14 +11,16 @@
 		struct CAT(static_assert_, __COUNTER__) { char x[(expr) ? 1 : -1]; }
 #endif
 
-#if defined(__clang__) || defined(__GNUC__)
-#	define LIKELY(...) __builtin_expect((__VA_ARGS__), 1)
-#	define UNLIKELY(...) __builtin_expect((__VA_ARGS__), 0)
-#	define NORETURN __attribute__((noreturn))
+#ifdef __INTELLISENSE__
+#define LIKELY(...) __VA_ARGS__
+#define UNLIKELY(...) __VA_ARGS__
+#define NORETURN __declspec(noreturn)
+#define UNUSED
 #else
-#	define LIKELY(...) (__VA_ARGS__)
-#	define UNLIKELY(...) (__VA_ARGS__)
-#	define NORETURN __declspec(noreturn)
+#define LIKELY(...) __builtin_expect((__VA_ARGS__), 1)
+#define UNLIKELY(...) __builtin_expect((__VA_ARGS__), 0)
+#define NORETURN __attribute__((noreturn))
+#define UNUSED __attribute__((unused))
 #endif
 
 #define SIZE(x) (sizeof(x) / (sizeof(*(x))))
@@ -35,50 +37,67 @@
 		void* SWAP_a = (a); \
 		void* SWAP_b = (b); \
 		enum { SWAP_s = sizeof(*(a)) }; \
-		static_assert(SWAP_s == sizeof(*(b)), "SWAP: Mismatched operand size"); \
+		static_assert(SWAP_s == sizeof(*(b)), \
+			"SWAP: Mismatched operand size"); \
 		char SWAP_t[SWAP_s]; \
 		memcpy(SWAP_t, SWAP_a, SWAP_s); \
 		memcpy(SWAP_a, SWAP_b, SWAP_s); \
 		memcpy(SWAP_b, SWAP_t, SWAP_s); \
 	} while (0)
 
-/* FOREACH(element-var, index-var, type, ...)
+/* FOREACH(element-var, index-var, ...)
 A convenience macro for easy iteration over array elements.
 
 element-var: names a variable containing, depending on the for-each variant,
 	either a pointer to the current element, or a copy of the current element.
 index-var: names a variable containing the index of the current element.
-type: the type of the elements in the array.
 
 The variants suffixed with V (FOREACHV, FOREACHV_*) copy the element to
 element-var. */
 
-// FOREACH(element-var, index-var, type, data, size)
-// data: pointer to the elements of the array.
-// size: size of the array, in elements.
-#define FOREACH(xvar, ivar, type, data, size) \
-	FOREACHP_(xvar, ivar, type, (data), (size))
+/* FOREACH(element-var, index-var, data, size)
+data: pointer to the elements of the array.
+size: size of the array, in elements. */
+#define FOREACH(xvar, ivar, data, size) \
+	FOREACHP_(xvar, ivar, 0, FOREACH_f, (data), FOREACH_f, (size))
 
-#define FOREACHV(xvar, ivar, type, data, size) \
-	FOREACHV_(xvar, ivar, type, (data), (size))
+#define FOREACHV(xvar, ivar, data, size) \
+	FOREACHV_(xvar, ivar, 0, FOREACH_f, (data), FOREACH_f, (size))
 
-// FOREACH_S(element-var, index-var, type, span)
-// span: pointer to a `struct { type* data; intptr_t size; }`.
-#define FOREACH_S(xvar, ivar, type, span) \
-	FOREACHP_(xvar, ivar, type, (span)->data, (span)->size)
+#define FOREACH_f(x, c) c
 
-#define FOREACHV_S(xvar, ivar, type, span) \
-	FOREACHV_(xvar, ivar, type, (span)->data, (span)->size)
+#ifdef __INTELLISENSE__
+#define FOREACH_(xvar, ivar, a, pf, pfc, cf, cfc, xf) \
+	for (intptr_t ivar = cf(a, cfc);;) \
+	for (auto xvar = xf(pf(a, pfc));;)
+#else
+#define FOREACH_(xvar, ivar, a, pf, pfc, cf, cfc, xf) \
+	for (intptr_t FOREACH_i = 0, FOREACH_c, \
+		FOREACH_x = 1, UNUSED ivar; FOREACH_x;) \
+	for (__typeof__(a) UNUSED FOREACH_a = (a); \
+		FOREACH_c = cf(FOREACH_a, cfc), FOREACH_x;) \
+	for (__typeof__(*pf(FOREACH_a, pfc))* \
+		FOREACH_p = pf(a, pfc); FOREACH_x; FOREACH_x = 0) \
+	for (__typeof__(xf(FOREACH_p)) xvar; FOREACH_i < FOREACH_c && (xvar \
+		= xf((FOREACH_p + FOREACH_i)), ivar = FOREACH_i, 1); ++FOREACH_i)
+#endif
 
-#define FOREACH_(xvar, ivar, pt, getp, getc, xt, getx) \
-	for (intptr_t FOREACH_i = 0, FOREACH_c = getc, \
-		FOREACH_x = 1, ivar; FOREACH_x; (void)ivar) \
-	for (pt* FOREACH_p = getp; FOREACH_x; FOREACH_x = 0) \
-	for (xt xvar; FOREACH_i < FOREACH_c && \
-		(xvar = getx, ivar = FOREACH_i, 1); ++FOREACH_i)
+#define FOREACHP_xf(x) x
+#define FOREACHP_(xvar, ivar, a, pf, pfc, cf, cfc) \
+	FOREACH_(xvar, ivar, a, pf, pfc, cf, cfc, FOREACHP_xf)
 
-#define FOREACHP_(xvar, ivar, t, getp, getc) \
-	FOREACH_(xvar, ivar, t, getp, getc, t*, FOREACH_p + FOREACH_i)
+#define FOREACHV_xf(x) *x
+#define FOREACHV_(xvar, ivar, a, pf, pfc, cf, cfc) \
+	FOREACH_(xvar, ivar, a, pf, pfc, cf, cfc, FOREACHV_xf)
 
-#define FOREACHV_(xvar, ivar, t, getp, getc) \
-	FOREACH_(xvar, ivar, t const, getp, getc, t, FOREACH_p[FOREACH_i])
+
+/* FOREACH_S(element-var, index-var, span)
+span: pointer to struct { T* data; intptr_t size; } */
+#define FOREACH_S(xvar, ivar, span) \
+	FOREACHP_(xvar, ivar, (&*(span)), FOREACH_S_pf,, FOREACH_S_cf,)
+
+#define FOREACHV_S(xvar, ivar, span) \
+	FOREACHV_(xvar, ivar, (&*(span)), FOREACH_S_pf,, FOREACH_S_cf,)
+
+#define FOREACH_S_pf(x, c) x->data
+#define FOREACH_S_cf(x, c) x->size
