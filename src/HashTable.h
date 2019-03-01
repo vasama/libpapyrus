@@ -22,9 +22,9 @@ struct HashTable
 static inline void
 HashTable_Init(struct HashTable* table)
 {
-	extern const uint8_t HashTable_EmptyBlock[];
+	extern const uint8_t Papyrus_HashTable_EmptyBlock[];
 
-	table->data = (void*)HashTable_EmptyBlock;
+	table->data = (void*)Papyrus_HashTable_EmptyBlock;
 	table->size = 0;
 	table->capa = 0;
 }
@@ -34,11 +34,11 @@ HashTable_Destroy(struct HashTable* table,
 	uintptr_t elemSize, struct Papyrus_Allocator allocator)
 {
 	void
-	HashTable_Destroy_(struct HashTable* table,
+	Papyrus_HashTable_Destroy(struct HashTable* table,
 		uintptr_t elemSize, struct Papyrus_Allocator allocator);
 
 	if (table->capa > 0)
-		HashTable_Destroy_(table, elemSize, allocator);
+		Papyrus_HashTable_Destroy(table, elemSize, allocator);
 }
 
 /* Returns the number of elements in the hash table. */
@@ -56,9 +56,16 @@ HashTable_Capacity(const struct HashTable* table)
 	return table->capa;
 }
 
-void
+static inline void
 HashTable_Reserve(struct HashTable* table, uintptr_t elemSize,
-	intptr_t minCapacity, struct Papyrus_Allocator allocator);
+	intptr_t minCapacity, struct Papyrus_Allocator allocator)
+{
+	void
+	Papyrus_HashTable_Reserve(struct HashTable* table, uintptr_t elemSize,
+		intptr_t minCapacity, struct Papyrus_Allocator allocator);
+
+	Papyrus_HashTable_Reserve(table, elemSize, minCapacity, allocator);
+}
 
 static inline void*
 HashTable_Find(struct HashTable* table, const void* key,
@@ -66,11 +73,11 @@ HashTable_Find(struct HashTable* table, const void* key,
 	bool(*compare)(const void*, const void*))
 {
 	void*
-	HashTable_Find_(struct HashTable* table,
+	Papyrus_HashTable_Find(struct HashTable* table,
 		const void* key, uintptr_t elemSize, uintptr_t hash,
 		bool(*compare)(const void*, const void*));
 
-	return HashTable_Find_(table, key, elemSize, hash(key), compare);
+	return Papyrus_HashTable_Find(table, key, elemSize, hash(key), compare);
 }
 
 struct HashTable_InsertResult
@@ -79,11 +86,21 @@ struct HashTable_InsertResult
 	bool inserted;
 };
 
-struct HashTable_InsertResult
-HashTable_Insert(struct HashTable* table,
-	const void* key, uintptr_t elemSize, uintptr_t(*hash)(const void*),
+static inline struct HashTable_InsertResult
+HashTable_Insert(struct HashTable* table, const void* key,
+	uintptr_t elemSize, uintptr_t(*hash)(const void*),
 	bool(*compare)(const void*, const void*),
-	struct Papyrus_Allocator* allocator);
+	struct Papyrus_Allocator* allocator)
+{
+	struct HashTable_InsertResult
+	Papyrus_HashTable_Insert(struct HashTable* table, const void* key,
+		uintptr_t elemSize, uintptr_t(*hash)(const void*),
+		bool(*compare)(const void*, const void*),
+		struct Papyrus_Allocator* allocator);
+
+	return Papyrus_HashTable_Insert(table,
+		key, elemSize, hash, compare, allocator);
+}
 
 static inline bool
 HashTable_Remove(struct HashTable* table,
@@ -91,11 +108,11 @@ HashTable_Remove(struct HashTable* table,
 	bool(*compare)(const void*, const void*), void* out)
 {
 	bool
-	HashTable_Remove_(struct HashTable* table,
+	Papyrus_HashTable_Remove(struct HashTable* table,
 		const void* key, uintptr_t elemSize, uintptr_t hash,
 		bool(*compare)(const void*, const void*), void* out);
 
-	return HashTable_Remove_(
+	return Papyrus_HashTable_Remove(
 		table, key, elemSize, hash(key), compare, out);
 }
 
@@ -103,11 +120,11 @@ static inline void
 HashTable_Clear(struct HashTable* table, uintptr_t elemSize)
 {
 	void
-	HashTable_Clear_(
+	Papyrus_HashTable_Clear(
 		struct HashTable* table, uintptr_t elemSize);
 
 	if (table->size > 0)
-		HashTable_Clear_(table, elemSize);
+		Papyrus_HashTable_Clear(table, elemSize);
 }
 
 #define HashTable_DEFINE_MAP(name, keytype, valtype, fnhash, fncmp) \

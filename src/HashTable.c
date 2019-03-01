@@ -73,7 +73,7 @@ GetMaskAndShift(intptr_t capacity, uintptr_t* maskOut, uintptr_t* shiftOut)
 {
 	uintptr_t mask = (uintptr_t)(capacity != 0 ? capacity - 1 : 1);
 	*maskOut = mask;
-	*shiftOut = bsr64(mask);
+	*shiftOut = clz64(mask);
 }
 
 /* Compute index from a hash value using Fibonacci hashing. The hash value is
@@ -144,7 +144,7 @@ GetSlot(void* data, uintptr_t elemSize, intptr_t index)
 }
 
 void
-Papyrus_HashTable_Destroy_(struct HashTable* table,
+Papyrus_HashTable_Destroy(struct HashTable* table,
 	uintptr_t elemSize, struct Papyrus_Allocator allocator)
 {
 	intptr_t capa = table->capa;
@@ -158,7 +158,7 @@ Operation: Use the hash of the input key mod table size to find the hash chain.
 If the hash chain exists, loop through it and compare keys in each element to
 the input key. */
 void*
-Papyrus_HashTable_Find_(struct HashTable* table,
+Papyrus_HashTable_Find(struct HashTable* table,
 	const void* key, uintptr_t elemSize, uintptr_t hash,
 	bool(*fnCompare)(const void*, const void*))
 {
@@ -469,7 +469,7 @@ Operation: If the element exists, move the last element in the chain to the
 vacated slot, and remove the last slot, or remove the entire chain if the
 element being removed is the only one in the chain. */
 bool
-Papyrus_HashTable_Remove_(struct HashTable* table,
+Papyrus_HashTable_Remove(struct HashTable* table,
 	const void* elem, uintptr_t elemSize, uintptr_t hash,
 	bool(*fnCompare)(const void*, const void*), void* out)
 {
@@ -563,7 +563,7 @@ Papyrus_HashTable_Remove_(struct HashTable* table,
 }
 
 void
-Papyrus_HashTable_Clear_(struct HashTable* table, uintptr_t elemSize)
+Papyrus_HashTable_Clear(struct HashTable* table, uintptr_t elemSize)
 {
 	intptr_t capa = table->capa;
 	uintptr_t dataSize = capa + capa * elemSize;

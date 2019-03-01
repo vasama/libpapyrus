@@ -5,6 +5,7 @@
 #if defined(__clang) || defined(__GNUC__)
 #	define bsf32(x) ((uint32_t)__builtin_ctz((unsigned)(x)))
 #	define bsf64(x) ((uint32_t)__builtin_ctzll((unsigned long long)(x)))
+
 #	define bsr32(x) ((uint32_t)__builtin_clz((unsigned)(x)))
 #	define bsr64(x) ((uint32_t)__builtin_clzll((unsigned long long)(x)))
 
@@ -36,7 +37,7 @@ bsr32(uint32_t x)
 {
 	unsigned long r;
 	_BitScanReverse(&r, x);
-	return r ^ 31;
+	return r;
 }
 
 static inline uint32_t
@@ -44,10 +45,16 @@ bsr64(uint64_t x)
 {
 	unsigned long r;
 	_BitScanReverse64(&r, x);
-	return r ^ 63;
+	return r;
 }
 
 #	define bswap16(x) ((uint16_t)_byteswap_ushort((unsigned short)(x)))
 #	define bswap32(x) ((uint32_t)_byteswap_ulong((unsigned long)(x)))
 #	define bswap64(x) ((uint64_t)_byteswap_uint64((unsigned __int64)(x)))
 #endif
+
+#	define ctz32(x) bsf32(x)
+#	define ctz64(x) bsf64(x)
+
+#	define clz32(x) ((uint32_t)(bsr32(x) ^ 31))
+#	define clz64(x) ((uint32_t)(bsr64(x) ^ 63))
