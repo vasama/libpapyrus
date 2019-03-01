@@ -3,17 +3,22 @@
 #include <assert.h>
 #include <stdint.h>
 
+#define CAT_(a, b) a ## b
+#define CAT(a, b) CAT_(a, b)
+
 #ifndef static_assert
 #	define static_assert(expr, message) \
-		struct static_assert_ ## __LINE__ { char x[(expr) ? 1 : -1]; }
+		struct CAT(static_assert_, __COUNTER__) { char x[(expr) ? 1 : -1]; }
 #endif
 
 #if defined(__clang__) || defined(__GNUC__)
 #	define LIKELY(...) __builtin_expect((__VA_ARGS__), 1)
 #	define UNLIKELY(...) __builtin_expect((__VA_ARGS__), 0)
+#	define NORETURN __attribute__((noreturn))
 #else
 #	define LIKELY(...) (__VA_ARGS__)
 #	define UNLIKELY(...) (__VA_ARGS__)
+#	define NORETURN __declspec(noreturn)
 #endif
 
 #define SIZE(x) (sizeof(x) / (sizeof(*(x))))
