@@ -74,8 +74,8 @@ List_Remove(struct List* link)
 #define List_FOREACH_(xvar, ivar, type, field, list, xt, xo) \
 	for (intptr_t List_FOREACH_i = 0, List_FOREACH_x = 1, ivar; \
 		List_FOREACH_x; (void)ivar) \
-	for (struct List *List_FOREACH_l = (list), \
-		*List_FOREACH_n = List_FOREACH_l; List_FOREACH_x;) \
+	for (struct List *List_FOREACH_l = (list), *List_FOREACH_n = \
+		List_FOREACH_l; List_FOREACH_x; List_FOREACH_x = 0) \
 	for (xt xvar; (List_FOREACH_n = List_FOREACH_n->next) != \
 		List_FOREACH_l && (xvar = xo List_GetObject(List_FOREACH_n, \
 		type, field), ivar = List_FOREACH_i, 1); ++List_FOREACH_i)
