@@ -104,7 +104,7 @@ struct Papyrus_Syntax_Symbol
 {
 	struct Papyrus_Syntax syntax;
 
-	const struct Papyrus_String* data;
+	struct Papyrus_String* data;
 	intptr_t size;
 };
 
@@ -118,14 +118,14 @@ struct Papyrus_Syntax_Type
 {
 	struct Papyrus_Syntax syntax;
 
-	const struct Papyrus_Syntax_Symbol* symbol;
+	struct Papyrus_Syntax_Symbol* symbol;
 };
 
 struct Papyrus_Syntax_Scope
 {
 	struct Papyrus_Syntax syntax;
 
-	const struct Papyrus_Syntax* const* data;
+	struct Papyrus_Syntax** data;
 	intptr_t size;
 };
 
@@ -133,8 +133,8 @@ struct Papyrus_Syntax_IfClause
 {
 	struct Papyrus_Syntax syntax;
 
-	const struct Papyrus_Syntax* cond;
-	const struct Papyrus_Syntax_Scope* scope;
+	struct Papyrus_Syntax* cond;
+	struct Papyrus_Syntax_Scope* scope;
 };
 
 struct Papyrus_Syntax_Param
@@ -142,15 +142,15 @@ struct Papyrus_Syntax_Param
 	struct Papyrus_Syntax syntax;
 
 	struct Papyrus_String name;
-	const struct Papyrus_Syntax_Type* type;
-	const struct Papyrus_Syntax* expr;
+	struct Papyrus_Syntax_Type* type;
+	struct Papyrus_Syntax* expr;
 };
 
 struct Papyrus_Syntax_ParamList
 {
 	struct Papyrus_Syntax syntax;
 
-	const struct Papyrus_Syntax_Param* const* data;
+	struct Papyrus_Syntax_Param** data;
 	intptr_t size;
 };
 
@@ -159,7 +159,7 @@ struct Papyrus_Syntax_NameExpr
 {
 	struct Papyrus_Syntax syntax;
 
-	const struct Papyrus_Syntax_Symbol* symbol;
+	struct Papyrus_Syntax_Symbol* symbol;
 };
 
 struct Papyrus_Syntax_ConstExpr
@@ -173,8 +173,8 @@ struct Papyrus_Syntax_NewExpr
 {
 	struct Papyrus_Syntax syntax;
 
-	const struct Papyrus_Syntax_Symbol* name;
-	const struct Papyrus_Syntax* extent;
+	struct Papyrus_Syntax_Symbol* name;
+	struct Papyrus_Syntax* extent;
 };
 
 
@@ -182,22 +182,22 @@ struct Papyrus_Syntax_UnaryExpr
 {
 	struct Papyrus_Syntax syntax;
 
-	const struct Papyrus_Syntax* expr;
+	struct Papyrus_Syntax* expr;
 };
 
 struct Papyrus_Syntax_BinaryExpr
 {
 	struct Papyrus_Syntax syntax;
 
-	const struct Papyrus_Syntax* left;
-	const struct Papyrus_Syntax* right;
+	struct Papyrus_Syntax* left;
+	struct Papyrus_Syntax* right;
 };
 
 struct Papyrus_Syntax_AccessExpr
 {
 	struct Papyrus_Syntax syntax;
 
-	const struct Papyrus_Syntax* expr;
+	struct Papyrus_Syntax* expr;
 	struct Papyrus_String name;
 };
 
@@ -205,17 +205,17 @@ struct Papyrus_Syntax_CastExpr
 {
 	struct Papyrus_Syntax syntax;
 
-	const struct Papyrus_Syntax_Type* type;
-	const struct Papyrus_Syntax* expr;
+	struct Papyrus_Syntax_Type* type;
+	struct Papyrus_Syntax* expr;
 };
 
 struct Papyrus_Syntax_CallExpr
 {
 	struct Papyrus_Syntax syntax;
 
-	const struct Papyrus_Syntax* expr;
+	struct Papyrus_Syntax* expr;
 	struct {
-		const struct Papyrus_Syntax* const* data;
+		struct Papyrus_Syntax** data;
 		intptr_t size;
 	} args;
 };
@@ -225,22 +225,22 @@ struct Papyrus_Syntax_ExprStmt
 {
 	struct Papyrus_Syntax syntax;
 
-	const struct Papyrus_Syntax* expr;
+	struct Papyrus_Syntax* expr;
 };
 
 struct Papyrus_Syntax_AssignStmt
 {
 	struct Papyrus_Syntax syntax;
 
-	const struct Papyrus_Syntax* object;
-	const struct Papyrus_Syntax* expr;
+	struct Papyrus_Syntax* object;
+	struct Papyrus_Syntax* expr;
 };
 
 struct Papyrus_Syntax_ReturnStmt
 {
 	struct Papyrus_Syntax syntax;
 
-	const struct Papyrus_Syntax* expr;
+	struct Papyrus_Syntax* expr;
 };
 
 struct Papyrus_Syntax_IfStmt
@@ -248,18 +248,18 @@ struct Papyrus_Syntax_IfStmt
 	struct Papyrus_Syntax syntax;
 
 	struct {
-		const struct Papyrus_Syntax_IfClause* const* data;
+		struct Papyrus_Syntax_IfClause** data;
 		intptr_t size;
 	} clauses;
-	const struct Papyrus_Syntax_Scope* elseScope;
+	struct Papyrus_Syntax_Scope* elseScope;
 };
 
 struct Papyrus_Syntax_WhileStmt
 {
 	struct Papyrus_Syntax syntax;
 
-	const struct Papyrus_Syntax* cond;
-	const struct Papyrus_Syntax_Scope* scope;
+	struct Papyrus_Syntax* cond;
+	struct Papyrus_Syntax_Scope* scope;
 };
 
 
@@ -281,8 +281,8 @@ struct Papyrus_Syntax_Event
 	struct Papyrus_Syntax syntax;
 
 	struct Papyrus_String name;
-	const struct Papyrus_Syntax_ParamList* params;
-	const struct Papyrus_Syntax_Scope* scope;
+	struct Papyrus_Syntax_ParamList* params;
+	struct Papyrus_Syntax_Scope* scope;
 	uint32_t uflags;
 };
 
@@ -291,9 +291,9 @@ struct Papyrus_Syntax_Function
 	struct Papyrus_Syntax syntax;
 
 	struct Papyrus_String name;
-	const struct Papyrus_Syntax_Type* type;
-	const struct Papyrus_Syntax_ParamList* params;
-	const struct Papyrus_Syntax_Scope* scope;
+	struct Papyrus_Syntax_Type* type;
+	struct Papyrus_Syntax_ParamList* params;
+	struct Papyrus_Syntax_Scope* scope;
 	uint32_t uflags;
 };
 
@@ -302,10 +302,10 @@ struct Papyrus_Syntax_Property
 	struct Papyrus_Syntax syntax;
 
 	struct Papyrus_String name;
-	const struct Papyrus_Syntax_Type* type;
+	struct Papyrus_Syntax_Type* type;
 	union {
-		const struct Papyrus_Syntax* expr;
-		const struct Papyrus_Syntax_Scope* scope;
+		struct Papyrus_Syntax* expr;
+		struct Papyrus_Syntax_Scope* scope;
 	};
 	uint32_t uflags;
 };
@@ -315,7 +315,7 @@ struct Papyrus_Syntax_State
 	struct Papyrus_Syntax syntax;
 
 	struct Papyrus_String name;
-	const struct Papyrus_Syntax_Scope* scope;
+	struct Papyrus_Syntax_Scope* scope;
 	uint32_t uflags;
 };
 
@@ -324,8 +324,8 @@ struct Papyrus_Syntax_Variable
 	struct Papyrus_Syntax syntax;
 
 	struct Papyrus_String name;
-	const struct Papyrus_Syntax_Type* type;
-	const struct Papyrus_Syntax* expr;
+	struct Papyrus_Syntax_Type* type;
+	struct Papyrus_Syntax* expr;
 	uint32_t uflags;
 };
 
@@ -334,7 +334,7 @@ struct Papyrus_Syntax_Import
 {
 	struct Papyrus_Syntax syntax;
 
-	const struct Papyrus_Syntax_Symbol* symbol;
+	struct Papyrus_Syntax_Symbol* symbol;
 };
 
 struct Papyrus_Syntax_ScriptHeader
@@ -342,7 +342,7 @@ struct Papyrus_Syntax_ScriptHeader
 	struct Papyrus_Syntax syntax;
 
 	struct Papyrus_String name;
-	const struct Papyrus_Syntax_Symbol* base;
+	struct Papyrus_Syntax_Symbol* base;
 	uint32_t uflags;
 };
 
@@ -351,5 +351,5 @@ struct Papyrus_Syntax_Script
 {
 	struct Papyrus_Syntax syntax;
 
-	const struct Papyrus_Syntax_Scope* scope;
+	struct Papyrus_Syntax_Scope* scope;
 };

@@ -11,7 +11,7 @@ source string, along with some options, and produces a syntax tree object. */
 
 struct Papyrus_SyntaxTree
 {
-	const struct Papyrus_Syntax_Script* script;
+	struct Papyrus_Syntax_Script* script;
 };
 
 struct Papyrus_ParserOptions

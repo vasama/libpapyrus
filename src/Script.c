@@ -25,8 +25,8 @@ another script, if available. */
 #include <stdio.h>
 #include <stdarg.h>
 
-typedef const struct Papyrus_Syntax Syntax;
-#define SYNTAX(x) const struct Papyrus_Syntax_ ## x
+typedef struct Papyrus_Syntax Syntax;
+#define SYNTAX(x) struct Papyrus_Syntax_ ## x
 
 struct Function
 {
@@ -34,7 +34,7 @@ struct Function
 
 	struct Papyrus_IR* ir;
 
-	const struct Papyrus_Syntax_Function* syntax;
+	SYNTAX(Function)* syntax;
 };
 
 struct Variable
@@ -49,7 +49,7 @@ struct Property
 {
 	struct Papyrus_Property public;
 	
-	const struct Papyrus_Syntax_Property* syntax;
+	SYNTAX(Property)* syntax;
 };
 
 struct Script

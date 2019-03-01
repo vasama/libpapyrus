@@ -130,7 +130,7 @@ PrintType(Ctx* ctx, const struct Papyrus_Syntax_Type* type)
 static void
 PrintScope(Ctx* ctx, const struct Papyrus_Syntax_Scope* scope)
 {
-	const struct Papyrus_Syntax* const* data = scope->data;
+	struct Papyrus_Syntax* const* data = scope->data;
 	for (intptr_t i = 0, c = scope->size; i < c; ++i)
 		PrintSyntax(ctx, data[i]);
 }
@@ -211,7 +211,7 @@ PrintSyntax_CallExpr(Ctx* ctx, const struct Papyrus_Syntax* syntax)
 		PrintLine(ctx, "args:");
 		Enter(ctx);
 
-		const struct Papyrus_Syntax* const* args = expr->args.data;
+		struct Papyrus_Syntax* const* args = expr->args.data;
 		for (intptr_t i = 0; i < argsCount; ++i)
 			PrintSyntax(ctx, args[i]);
 
@@ -255,7 +255,7 @@ PrintSyntax_IfStmt(Ctx* ctx, const struct Papyrus_Syntax* syntax)
 
 	const char* header = "if:";
 
-	const struct Papyrus_Syntax_IfClause* const* clauses = stmt->clauses.data;
+	struct Papyrus_Syntax_IfClause* const* clauses = stmt->clauses.data;
 	for (intptr_t i = 0, c = stmt->clauses.size; i < c; ++i)
 	{
 		const struct Papyrus_Syntax_IfClause* clause = clauses[i];
@@ -307,7 +307,7 @@ PrintSyntax_Function(Ctx* ctx, const struct Papyrus_Syntax* syntax)
 	Print(ctx, "name: ");
 	PrintLine_String(ctx, func->name);
 
-	const struct Papyrus_Syntax_Param* const* params = func->params->data;
+	struct Papyrus_Syntax_Param* const* params = func->params->data;
 	for (intptr_t i = 0, c = func->params->size; i < c; ++i)
 	{
 		const struct Papyrus_Syntax_Param* param = params[i];

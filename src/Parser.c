@@ -5,8 +5,6 @@ The parser is a simple hand-written LL(k). The parser uses a stack-like data
 structure for building syntax lists before committing them into the syntax
 tree. */
 
-#pragma once
-
 #include "Papyrus/Parser.h"
 
 #include "Papyrus/Diagnostics.h"
@@ -416,7 +414,7 @@ Synbuf_Commit_(Ctx* ctx, uintptr_t objSize,
 
 #define Synbuf_Commit(out) \
 	Synbuf_Commit_(ctx, sizeof(*(out)->data), \
-		(void**)&(out)->data, (intptr_t*)&(out)->size)
+		(const void**)&(out)->data, (intptr_t*)&(out)->size)
 
 
 //TODO: lexer buffer documentation
@@ -878,7 +876,7 @@ ParseType(Ctx* ctx)
 			.flags = Papyrus_SyntaxFlags_Error,
 			.eflags = 0,
 		},
-		.data = &ErrorString,
+		.data = (struct Papyrus_String*)&ErrorString,
 		.size = 1,
 	};
 	static const struct Papyrus_Syntax_Type ErrorType = {
@@ -888,7 +886,7 @@ ParseType(Ctx* ctx)
 			.flags = Papyrus_SyntaxFlags_Error,
 			.eflags = 0,
 		},
-		.symbol = &ErrorSymbol,
+		.symbol = (struct Papyrus_Syntax_Symbol*)&ErrorSymbol,
 	};
 
 	struct Papyrus_Syntax_Type* new;
@@ -910,7 +908,7 @@ ParseType(Ctx* ctx)
 					.flags = 0, \
 					.eflags = 0, \
 				}, \
-				.data = &String, \
+				.data = (struct Papyrus_String*)&String, \
 				.size = 1, \
 			}; \
 			static const struct Papyrus_Syntax_Type Type = { \
@@ -920,7 +918,7 @@ ParseType(Ctx* ctx)
 					.flags = 0, \
 					.eflags = Papyrus_Syntax_TypeFlags_Fundamental, \
 				}, \
-				.symbol = &Symbol, \
+				.symbol = (struct Papyrus_Syntax_Symbol*)&Symbol, \
 			}; \
 			new = (struct Papyrus_Syntax_Type*)&Type; \
 		} \
@@ -992,6 +990,8 @@ ParseExpr(Ctx* ctx, uint32_t prec)
 			new->syntax.ekind = ekind;
 			new->expr = ParseExpr(ctx, Prec_Unary);
 			PropagateError(new, new->expr);
+
+			expr = &new->syntax;
 
 			if (prec >= Prec_Unary)
 				goto exit;
@@ -1174,6 +1174,9 @@ ParseExpr(Ctx* ctx, uint32_t prec)
 					case Tok_DivAssign:
 					case Tok_ModAssign:
 						goto exit;
+					
+					default:
+						break;
 					}
 
 				struct Papyrus_Syntax_AccessExpr* new =
@@ -1189,6 +1192,9 @@ ParseExpr(Ctx* ctx, uint32_t prec)
 				expr = &new->syntax;
 			}
 			goto postfix;
+
+		default:
+			break;
 		}
 		break;
 
@@ -1610,7 +1616,7 @@ ParseVariable(Ctx* ctx, struct Papyrus_Syntax_Type* type)
 	}
 	else new->expr = NULL;
 
-	uint32_t flagsmask = 0;
+	//uint32_t flagsmask = 0;
 	if (!ParseFlags(ctx, 0, 0, &new->syntax.eflags, &new->uflags))
 		SetError(new);
 
@@ -1789,6 +1795,9 @@ ParseScope(Ctx* ctx)
 
 				case Tok_Colon:
 					goto parse_variable;
+
+				default:
+					break;
 				}
 				goto parse_expr;
 			}
