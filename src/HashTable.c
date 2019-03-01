@@ -135,7 +135,7 @@ GetSlot(void* data, uintptr_t elemSize, intptr_t index)
 	uintptr_t i = (uintptr_t)index / BlockSize;
 	uintptr_t j = (uintptr_t)index % BlockSize;
 
-	data = (char*)data + i * (BlockSize + BlockSize * elemSize);
+	data = (char*)data + i * GetBlockSize(elemSize);
 
 	return (struct Slot) {
 		.ctrl = (uint8_t*)((char*)data + j),
@@ -211,7 +211,7 @@ Rehash(struct HashTable* table, intptr_t newCapacity,
 	uintptr_t newdataSize = newCapacity + newCapacity * elemSize;
 	newTable.data = allocator.func(allocator.context, NULL, 0, newdataSize);
 
-	uintptr_t blockSize = BlockSize + BlockSize * elemSize;
+	uintptr_t blockSize = GetBlockSize(elemSize);
 	for (char* f = (char*)newTable.data,
 		*l = f + newdataSize; f < l; f += blockSize)
 	{
@@ -567,7 +567,7 @@ Papyrus_HashTable_Clear(struct HashTable* table, uintptr_t elemSize)
 {
 	intptr_t capa = table->capa;
 	uintptr_t dataSize = capa + capa * elemSize;
-	uintptr_t blockSize = BlockSize + BlockSize * elemSize;
+	uintptr_t blockSize = GetBlockSize(elemSize);
 	for (char* f = (char*)table->data,
 		*l = f + dataSize; f < l; f += blockSize)
 	{
