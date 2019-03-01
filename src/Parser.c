@@ -554,22 +554,18 @@ Consume_(Ctx* ctx, intptr_t count)
 static void
 ReportError(Ctx* ctx, const char* fmt, ...)
 {
+	struct Papyrus_String string;
+
 	char buffer[1024];
-	intptr_t size;
+	string.data = buffer;
 
-	{
-		va_list vlist;
-		va_start(vlist, fmt);
-		size = vsnprintf(buffer, sizeof(buffer), fmt, vlist);
-		va_end(vlist);
-	}
-
-	struct Papyrus_SourceRef srcref;
-	srcref.file = "";
-	srcref.offset = ctx->lex.offsets[ctx->lex.index * 2];
+	va_list vlist;
+	va_start(vlist, fmt);
+	string.size = vsnprintf(buffer, sizeof(buffer), fmt, vlist);
+	va_end(vlist);
 
 	struct Papyrus_Diagnostics* diag = ctx->diag;
-	diag->report(diag, srcref, 0, (struct Papyrus_String) { buffer, size });
+	diag->report(diag, ctx->lex.offsets[ctx->lex.index * 2], string);
 }
 
 static void

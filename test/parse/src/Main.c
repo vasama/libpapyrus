@@ -23,13 +23,13 @@ struct Diagnostics
 };
 
 static void
-Report(struct Papyrus_Diagnostics* diag_, struct Papyrus_SourceRef src,
-	uint32_t code, struct Papyrus_String message)
+Report(struct Papyrus_Diagnostics* diag_,
+	uint32_t offset, struct Papyrus_String message)
 {
 	struct Diagnostics* diag = (struct Diagnostics*)diag_;
 
 	struct Papyrus_SourcePos srcpos =
-		Papyrus_SourceMap_GetSourcePos(&diag->srcmap, src.offset);
+		Papyrus_SourceMap_GetSourcePos(&diag->srcmap, offset);
 
 	fprintf(stderr, "%d:%d %.*s\n", srcpos.line + 1,
 		srcpos.column + 1, (int)message.size, message.data);
