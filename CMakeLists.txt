@@ -16,6 +16,8 @@ add_library(libpapyrus
 
 	src/DumpAST.c
 	src/Parser.c
+	src/Program.c
+	src/Script.c
 	src/SourceMap.c
 
 	src/ulex/ulex.c
