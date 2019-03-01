@@ -6,6 +6,7 @@ list with the root object being placed at the front of the first block. */
 
 #include "ObjectGraph.h"
 
+#include "Intrinsics.h"
 #include "Macros.h"
 
 #include <assert.h>
@@ -22,6 +23,7 @@ struct Header
 struct Root
 {
 	struct Header header;
+	struct Papyrus_Allocator allocator;
 	struct {
 		char* beg;
 		char* cur;
@@ -46,6 +48,8 @@ Papyrus_ObjectGraph_Create(uintptr_t rootObjectSize,
 	root->header.next = NULL;
 	root->header.size = initialSize;
 
+	root->allocator = allocator;
+
 	char* beg = (char*)root + rootSize;
 	root->block.beg = beg;
 	root->block.cur = beg;
@@ -55,10 +59,11 @@ Papyrus_ObjectGraph_Create(uintptr_t rootObjectSize,
 }
 
 void
-Papyrus_ObjectGraph_Delete(void* rootObject,
-	struct Papyrus_Allocator allocator)
+Papyrus_ObjectGraph_Delete(void* rootObject)
 {
-	struct Header* header = &ROOT(rootObject)->header;
+	struct Root* root = ROOT(rootObject);
+	struct Header* header = &root->header;
+	struct Papyrus_Allocator allocator = root->allocator;
 	do {
 		struct Header* next = header->next;
 		allocator.func(allocator.context, header, header->size, 0);
@@ -66,21 +71,24 @@ Papyrus_ObjectGraph_Delete(void* rootObject,
 	} while (header != NULL);
 }
 
+static inline uintptr_t
+Po2(uintptr_t x)
+{
+	uintptr_t y = (uintptr_t)1 << bsr64(x);
+	return y == x ? y : y << 1;
+}
+
 char*
 Papyrus_ObjectGraph_Allocate(void* rootObject,
-	uintptr_t size, struct Papyrus_Allocator allocator,
-	struct ObjectGraph_Cache* cache)
+	uintptr_t size, struct ObjectGraph_Cache* cache)
 {
-	//TODO: use cache
-
 	struct Root* root = ROOT(rootObject);
 	struct Header* header = (struct Header*)root->block.beg;
 
-	//TODO: do this better
-	uintptr_t newSize = MIN(size, header->size * 2);
+	uintptr_t newSize = MIN(Po2(size), header->size * 2);
 
 	struct Header* new = (struct Header*)
-		allocator.func(allocator.context, NULL, 0, newSize);
+		root->allocator.func(root->allocator.context, NULL, 0, newSize);
 
 	new->next = NULL;
 	new->size = newSize;
@@ -88,8 +96,8 @@ Papyrus_ObjectGraph_Allocate(void* rootObject,
 
 	char* beg = (char*)(new + 1);
 	root->block.beg = beg;
-	root->block.cur = beg + size;
-	root->block.end = beg + newSize;
+	cache->cur = beg + size;
+	cache->end = beg + newSize;
 
 	return beg;
 }

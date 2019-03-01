@@ -261,7 +261,6 @@ struct Synbuf
 typedef struct {
 	struct Papyrus_SyntaxTree* tree;
 	struct ObjectGraph_Cache cache;
-	struct Papyrus_Allocator allocator;
 
 	const char* source;
 
@@ -285,8 +284,7 @@ typedef struct {
 static void*
 AllocateSyntax(Ctx* ctx, uintptr_t size)
 {
-	return ObjectGraph_CacheAllocate(
-		ctx->tree, size, ctx->allocator, &ctx->cache);
+	return ObjectGraph_CacheAllocate(ctx->tree, size, &ctx->cache);
 }
 
 static struct Papyrus_Syntax*
@@ -525,10 +523,23 @@ Peek_(Ctx* ctx, intptr_t lookahead)
 
 #define Peek(lookahead) Peek_(ctx, (lookahead))
 
+static inline uint32_t
+PeekOffset_(Ctx* ctx, intptr_t lookahead)
+{
+	intptr_t index = ctx->lex.index + lookahead;
+	assert(index < ctx->lex.count);
+	return ctx->lex.offsets[index * 2];
+}
+
+#define PeekOffset(lookahead) PeekOffset_(ctx, (lookahead))
+
 static inline struct Papyrus_String
 PeekString_(Ctx* ctx, intptr_t lookahead)
 {
-	intptr_t index = (ctx->lex.index + lookahead) * 2;
+	intptr_t index = ctx->lex.index + lookahead;
+	assert(index < ctx->lex.count);
+	index *= 2;
+
 	uint32_t* offsets = ctx->lex.offsets;
 
 	intptr_t offset = offsets[index];
@@ -837,6 +848,7 @@ static struct Papyrus_Syntax_Symbol*
 ParseSymbol(Ctx* ctx)
 {
 	struct Papyrus_Syntax_Symbol* new = CreateSyntax(Symbol);
+	new->syntax.offset = PeekOffset(0);
 
 	Synbuf_Create();
 
@@ -927,6 +939,7 @@ ParseType(Ctx* ctx)
 
 		case -1: // identifier
 			new = CreateSyntax(Type);
+			new->syntax.offset = PeekOffset(0);
 			new->symbol = ParseSymbol(ctx);
 			PropagateError(new, new->symbol);
 			break;
@@ -971,10 +984,10 @@ ParseExpr(Ctx* ctx, uint32_t prec)
 			ekind = Papyrus_Syntax_UnaryExpr_Not;
 			goto unary;
 
-		unary:
-			Consume(1);
-
+		unary:;
 			struct Papyrus_Syntax_UnaryExpr* new = CreateSyntax(UnaryExpr);
+			new->syntax.offset = PeekOffset(0);
+			Consume(1);
 
 			new->syntax.ekind = ekind;
 			new->expr = ParseExpr(ctx, Prec_Unary);
@@ -993,9 +1006,9 @@ ParseExpr(Ctx* ctx, uint32_t prec)
 			{
 			case Key_New:
 				{
-					Consume(1);
-
 					struct Papyrus_Syntax_NewExpr* new = CreateSyntax(NewExpr);
+					new->syntax.offset = PeekOffset(0);
+					Consume(1);
 
 					new->name = ParseSymbol(ctx);
 					PropagateError(new, new->name);
@@ -1014,11 +1027,9 @@ ParseExpr(Ctx* ctx, uint32_t prec)
 				break;
 
 			case Key_None:
-				{
-					Consume(1);
-
-					expr = &CreateSyntax2(ConstExpr, Empty)->syntax;
-				}
+				expr = &CreateSyntax2(ConstExpr, Empty)->syntax;
+				expr->offset = PeekOffset(0);
+				Consume(1);
 				break;
 			
 				{
@@ -1034,19 +1045,21 @@ ParseExpr(Ctx* ctx, uint32_t prec)
 
 				got_bool:
 					expr = &CreateSyntax2(ConstExpr, Empty)->syntax;
+					expr->offset = PeekOffset(0);
 					expr->ekind = ekind;
 				}
 				break;
 
 			case -1: // identifier
 				{
-					Consume(1);
-
 					struct Papyrus_Syntax_NameExpr* new =
 						CreateSyntax(NameExpr);
+					new->syntax.offset = PeekOffset(0);
+					Consume(1);
 					
 					struct Papyrus_Syntax_Symbol* symbol =
 						CreateSyntax(Symbol);
+					symbol->syntax.offset = PeekOffset(0);
 					symbol->data = (struct Papyrus_String*)
 						CommitSyntax(ctx, &string, sizeof(string));
 					symbol->size = 1;
@@ -1080,7 +1093,7 @@ ParseExpr(Ctx* ctx, uint32_t prec)
 
 		got_const_expr:;
 			struct Papyrus_Syntax_ConstExpr* new = CreateSyntax(ConstExpr);
-
+			new->syntax.offset = PeekOffset(0);
 			new->syntax.ekind = ekind;
 			new->string = PeekString(0);
 			Consume(1);
@@ -1102,9 +1115,9 @@ ParseExpr(Ctx* ctx, uint32_t prec)
 		{
 		case Tok_LParen:
 			{
-				Consume(1);
-
 				struct Papyrus_Syntax_CallExpr* new = CreateSyntax(CallExpr);
+				new->syntax.offset = PeekOffset(0);
+				Consume(1);
 
 				new->expr = expr;
 				PropagateError(new, expr);
@@ -1132,10 +1145,10 @@ ParseExpr(Ctx* ctx, uint32_t prec)
 
 		case Tok_LBrack:
 			{
-				Consume(1);
-
 				struct Papyrus_Syntax_BinaryExpr* new =
 					CreateSyntax(BinaryExpr);
+				new->syntax.offset = PeekOffset(0);
+				Consume(1);
 
 				new->left = expr;
 				PropagateError(new, expr);
@@ -1163,10 +1176,10 @@ ParseExpr(Ctx* ctx, uint32_t prec)
 						goto exit;
 					}
 
-				Consume(1);
-
 				struct Papyrus_Syntax_AccessExpr* new =
 					CreateSyntax(AccessExpr);
+				new->syntax.offset = PeekOffset(0);
+				Consume(1);
 
 				new->expr = expr;
 				PropagateError(new, expr);
@@ -1229,10 +1242,10 @@ ParseExpr(Ctx* ctx, uint32_t prec)
 				if (nprec <= prec)
 					goto exit;
 
-				Consume(1);
-
 				struct Papyrus_Syntax_BinaryExpr* new =
 					CreateSyntax(BinaryExpr);
+				new->syntax.offset = PeekOffset(0);
+				Consume(1);
 
 				new->syntax.ekind = ekind;
 
@@ -1264,10 +1277,10 @@ ParseExpr(Ctx* ctx, uint32_t prec)
 				goto got_cast_operator;
 #endif
 
-			got_cast_operator:
-				Consume(1);
-
+			got_cast_operator:;
 				struct Papyrus_Syntax_CastExpr* new = CreateSyntax(CastExpr);
+				new->syntax.offset = PeekOffset(0);
+				Consume(1);
 
 				new->syntax.ekind = ekind;
 
@@ -1351,6 +1364,7 @@ static struct Papyrus_Syntax_ParamList*
 ParseParams(Ctx* ctx)
 {
 	struct Papyrus_Syntax_ParamList* new = CreateSyntax(ParamList);
+	new->syntax.offset = PeekOffset(0);
 
 	Synbuf_Create();
 
@@ -1359,6 +1373,7 @@ ParseParams(Ctx* ctx)
 		do
 		{
 			struct Papyrus_Syntax_Param* param = CreateSyntax(Param);
+			param->syntax.offset = PeekOffset(0);
 
 			param->type = ParseType(ctx);
 			PropagateError(param, param->type);
@@ -1388,8 +1403,9 @@ static struct Papyrus_Syntax_Event*
 ParseEvent(Ctx* ctx)
 {
 	struct Papyrus_Syntax_Event* new = CreateSyntax(Event);
-
+	new->syntax.offset = PeekOffset(0);
 	Consume(1);
+
 	ConsumeNameOrSetError(new, &new->name);
 
 	if (ConsumeOrSetError(Tok_LParen, new))
@@ -1426,12 +1442,12 @@ static struct Papyrus_Syntax_Function*
 ParseFunction(Ctx* ctx, struct Papyrus_Syntax_Type* type)
 {
 	struct Papyrus_Syntax_Function* new = CreateSyntax(Function);
+	new->syntax.offset = PeekOffset(0);
+	Consume(1);
 
 	new->type = type;
 	if (type != NULL)
 		PropagateError(new, type);
-
-	Consume(1);
 
 	ConsumeNameOrSetError(new, &new->name);
 
@@ -1469,11 +1485,11 @@ static struct Papyrus_Syntax_Property*
 ParseProperty(Ctx* ctx, struct Papyrus_Syntax_Type* type)
 {
 	struct Papyrus_Syntax_Property* new = CreateSyntax(Property);
+	new->syntax.offset = PeekOffset(0);
+	Consume(1);
 
 	new->type = type;
 	PropagateError(new, type);
-
-	Consume(1);
 
 	ConsumeNameOrSetError(new, &new->name);
 
@@ -1535,7 +1551,7 @@ static struct Papyrus_Syntax_ScriptHeader*
 ParseScriptHeader(Ctx* ctx)
 {
 	struct Papyrus_Syntax_ScriptHeader* new = CreateSyntax(ScriptHeader);
-
+	new->syntax.offset = PeekOffset(0);
 	Consume(1);
 
 	ConsumeNameOrSetError(new, &new->name);
@@ -1562,6 +1578,7 @@ static struct Papyrus_Syntax_State*
 ParseState(Ctx* ctx, uint32_t flags)
 {
 	struct Papyrus_Syntax_State* new = CreateSyntax(State);
+	new->syntax.offset = PeekOffset(0);
 
 	ConsumeNameOrSetError(new, &new->name);
 
@@ -1577,6 +1594,7 @@ static struct Papyrus_Syntax_Variable*
 ParseVariable(Ctx* ctx, struct Papyrus_Syntax_Type* type)
 {
 	struct Papyrus_Syntax_Variable* new = CreateSyntax(Variable);
+	new->syntax.offset = PeekOffset(0);
 
 	new->type = type;
 	PropagateError(new, type);
@@ -1606,6 +1624,7 @@ static struct Papyrus_Syntax_Scope*
 ParseScope(Ctx* ctx)
 {
 	struct Papyrus_Syntax_Scope* scope = CreateSyntax(Scope);
+	scope->syntax.offset = PeekOffset(0);
 
 	Synbuf_Create();
 
@@ -1635,10 +1654,11 @@ ParseScope(Ctx* ctx)
 
 			case Key_Return:
 				{
-					Consume(1);
-
 					struct Papyrus_Syntax_ReturnStmt* new =
 						CreateSyntax(ReturnStmt);
+					new->syntax.offset = PeekOffset(0);
+					Consume(1);
+
 
 					if (!TryConsume(Tok_Newline))
 					{
@@ -1655,15 +1675,15 @@ ParseScope(Ctx* ctx)
 
 			case Key_If:
 				{
+					struct Papyrus_Syntax_IfStmt* new = CreateSyntax(IfStmt);
+					new->syntax.offset = PeekOffset(0);
 					Consume(1);
-
-					struct Papyrus_Syntax_IfStmt* new =
-						CreateSyntax(IfStmt);
 
 					Synbuf_Create();
 
 					struct Papyrus_Syntax_IfClause* clause =
 						CreateSyntax(IfClause);
+					clause->syntax.offset = PeekOffset(0);
 					clause->cond = ParseExpr(ctx, Prec_Default);
 					PropagateError(clause, clause->cond);
 
@@ -1679,9 +1699,9 @@ ParseScope(Ctx* ctx)
 					{
 					case Key_ElseIf:
 						{
-							Consume(1);
-
 							clause = CreateSyntax(IfClause);
+							clause->syntax.offset = PeekOffset(0);
+							Consume(1);
 							clause->cond = ParseExpr(ctx, Prec_Default);
 							PropagateError(new, clause->cond);
 
@@ -1729,10 +1749,10 @@ ParseScope(Ctx* ctx)
 
 			case Key_While:
 				{
-					Consume(1);
-
 					struct Papyrus_Syntax_WhileStmt* new =
 						CreateSyntax(WhileStmt);
+					new->syntax.offset = PeekOffset(0);
+					Consume(1);
 
 					new->cond = ParseExpr(ctx, Prec_Default);
 					PropagateError(new, new->cond);
@@ -1808,11 +1828,12 @@ ParseScope(Ctx* ctx)
 						ekind = Papyrus_Syntax_BinaryExpr_Mod;
 						goto parse_assignment;
 
-					parse_assignment:
-						Consume(1);
-
+					parse_assignment:;
 						struct Papyrus_Syntax_AssignStmt* new =
 							CreateSyntax(AssignStmt);
+						new->syntax.offset = PeekOffset(0);
+						Consume(1);
+
 						new->syntax.ekind = ekind;
 
 						new->object = expr;
@@ -1829,7 +1850,9 @@ ParseScope(Ctx* ctx)
 
 				default:
 					{
-						struct Papyrus_Syntax_ExprStmt* new = CreateSyntax(ExprStmt);
+						struct Papyrus_Syntax_ExprStmt* new =
+							CreateSyntax(ExprStmt);
+						new->syntax.offset = PeekOffset(0);
 
 						new->expr = expr;
 						PropagateError(new, expr);
@@ -1858,6 +1881,7 @@ static struct Papyrus_Syntax_Scope*
 ParseDeclScope(Ctx* ctx, uint32_t mask, uint32_t close)
 {
 	struct Papyrus_Syntax_Scope* new = CreateSyntax(Scope);
+	new->syntax.offset = PeekOffset(0);
 
 	Synbuf_Create();
 
@@ -1917,9 +1941,9 @@ ParseDeclScope(Ctx* ctx, uint32_t mask, uint32_t close)
 				{
 					CHECK(Import, "import directive");
 
-					Consume(1);
-
 					struct Papyrus_Syntax_Import* new = CreateSyntax(Import);
+					new->syntax.offset = PeekOffset(0);
+					Consume(1);
 
 					new->symbol = ParseSymbol(ctx);
 					PropagateError(new, new->symbol);
@@ -2036,6 +2060,7 @@ static struct Papyrus_Syntax_Script*
 ParseScript(Ctx* ctx)
 {
 	struct Papyrus_Syntax_Script* new = CreateSyntax(Script);
+	new->syntax.offset = PeekOffset(0);
 
 	new->scope = ParseDeclScope(ctx, -1, 0);
 	PropagateError(new, new->scope);
@@ -2053,7 +2078,6 @@ Papyrus_Parse(struct Papyrus_String source,
 
 	Ctx ctx;
 	ctx.tree = tree;
-	ctx.allocator = options->allocator;
 	ctx.source = source.data;
 
 	Arena_Init(&ctx.arena, options->pool);
@@ -2073,6 +2097,8 @@ Papyrus_Parse(struct Papyrus_String source,
 
 		ulex_init(&ctx.lex.lexer);
 		ulex_set_source(&ctx.lex.lexer, source.data, source.size);
+
+		PeekInternal(&ctx, 0);
 	}
 
 	ctx.diag = options->diag;

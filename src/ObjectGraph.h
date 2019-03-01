@@ -42,13 +42,12 @@ Returns a pointer to the root object. */
 
 /* Delete the entire object graph. */
 static inline void
-ObjectGraph_Delete(void* rootObject, struct Papyrus_Allocator allocator)
+ObjectGraph_Delete(void* rootObject)
 {
 	void
-	Papyrus_ObjectGraph_Delete(void* rootObject, 
-		struct Papyrus_Allocator allocator);
+	Papyrus_ObjectGraph_Delete(void* rootObject);
 
-	Papyrus_ObjectGraph_Delete(rootObject, allocator);
+	Papyrus_ObjectGraph_Delete(rootObject);
 }
 
 // Allocation cache
@@ -76,13 +75,11 @@ ObjectGraph_Synchronize(void* rootObject,
 // Allocate memory using a cache
 static inline void*
 ObjectGraph_CacheAllocate(void* rootObject,
-	uintptr_t size, struct Papyrus_Allocator allocator,
-	struct ObjectGraph_Cache* cache)
+	uintptr_t size, struct ObjectGraph_Cache* cache)
 {
 	char*
 	Papyrus_ObjectGraph_Allocate(void* rootObject,
-		uintptr_t size, struct Papyrus_Allocator allocator,
-		struct ObjectGraph_Cache* cache);
+		uintptr_t size, struct ObjectGraph_Cache* cache);
 
 	// round up to align
 	size = size + 7 & -8;
@@ -91,10 +88,7 @@ ObjectGraph_CacheAllocate(void* rootObject,
 	char* new = cur + size;
 
 	if (new > cache->end)
-	{
-		return Papyrus_ObjectGraph_Allocate(
-			rootObject, size, allocator, cache);
-	}
+		return Papyrus_ObjectGraph_Allocate(rootObject, size, cache);
 
 #ifndef NDEBUG
 	memset(cur, 0xEC, size);
@@ -106,9 +100,8 @@ ObjectGraph_CacheAllocate(void* rootObject,
 
 // Allocate memory through the root object
 static inline void*
-ObjectGraph_Allocate(void* rootObject,
-	uintptr_t size, struct Papyrus_Allocator allocator)
+ObjectGraph_Allocate(void* rootObject, uintptr_t size)
 {
-	return ObjectGraph_CacheAllocate(rootObject, size,
-		allocator, (struct ObjectGraph_Cache*)rootObject - 1);
+	return ObjectGraph_CacheAllocate(rootObject,
+		size, (struct ObjectGraph_Cache*)rootObject - 1);
 }
