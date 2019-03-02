@@ -72,7 +72,7 @@ Papyrus_SourceMap_SetSource(struct Papyrus_SourceMap* map,
 	{
 		while ((offset < source.size) & (mid < last))
 		{
-			uint32_t eqc = Equivalence[source.data[offset]];
+			uint32_t eqc = Equivalence[(uint8_t)source.data[offset]];
 			uint32_t trans = Transitions[eqc + state];
 			state = trans & 0x1F;
 
