@@ -111,7 +111,7 @@ Papyrus_Program_AddScript(struct Papyrus_Program* program,
 			struct Papyrus_Extern* externSymbol = 
 				(struct Papyrus_Extern*)x->symbol;
 
-			struct Papyrus_Script* script = externSymbol->script;
+			struct Papyrus_Script* script = symbol->script;
 			Papyrus_Script_SetExtern(script, externSymbol, symbol);
 			Papyrus_Script_Invalidate(script);
 		}
@@ -163,7 +163,7 @@ Papyrus_Program_RemoveScript(struct Papyrus_Program* program,
 
 			externSymbol->link = sym;
 
-			Papyrus_Script_Invalidate(externSymbol->script);
+			Papyrus_Script_Invalidate(x->symbol->script);
 		}
 	}
 

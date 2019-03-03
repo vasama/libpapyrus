@@ -42,6 +42,7 @@ struct Papyrus_Symbol
 	uint16_t flags;
 	uint32_t eflags;
 	struct Papyrus_String name;
+	struct Papyrus_Script* script;
 };
 
 

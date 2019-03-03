@@ -249,8 +249,11 @@ CreateSymbol_(BCtx* ctx, uintptr_t size)
 		Allocate_(&ctx->common, sizeof(struct Symbol) + size);
 
 	symbol->link = NULL;
+	
+	struct Papyrus_Symbol* public = symbol->symbol;
+	public->script = &ctx->common.script->internal.public;
 
-	return symbol->symbol;
+	return public;
 }
 
 #define CreateSymbol(ctx, type) \
@@ -296,7 +299,6 @@ ResolveExtern(BCtx* ctx, SYNTAX(Symbol)* syntax)
 	externSymbol->symbol.kind = Papyrus_Symbol_Extern;
 	externSymbol->symbol.flags = 0;
 	externSymbol->symbol.name = name;
-	externSymbol->script = &ctx->common.script->internal.public;
 	externSymbol->link = NULL;
 
 	ExternArray_Append(&ctx->externs, &externSymbol,

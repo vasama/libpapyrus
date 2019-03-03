@@ -7,7 +7,6 @@
 struct Papyrus_Extern
 {
 	struct Papyrus_Symbol symbol;
-	struct Papyrus_Script* script;
 	struct Papyrus_Symbol* link;
 	struct Papyrus_Type* type;
 };
