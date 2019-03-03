@@ -90,25 +90,13 @@ struct Papyrus_Type
 {
 	uint8_t type;
 	uint8_t kind;
-	struct {
-		uint8_t type;
-		uint8_t kind;
-	} array;
-	uint32_t flags;
-	struct Papyrus_Symbol* symbol;
-};
-
-struct Papyrus_TypX
-{
-	uint8_t type;
-	uint8_t kind;
 	uint16_t flags;
 	uint32_t eflags;
 	union {
-		struct Papyrus_TypX* element;
+		struct Papyrus_Type* element;
 		struct Papyrus_Symbol* symbol;
 	};
-	struct Papyrus_TypX* array;
+	struct Papyrus_Type* array;
 };
 
 
@@ -174,7 +162,7 @@ struct Papyrus_Expr
 	uint8_t kind;
 	uint8_t ekind;
 	uint32_t flags;
-	struct Papyrus_TypX* type;
+	struct Papyrus_Type* type;
 	union {
 		struct Papyrus_Symbol* symbol;
 
@@ -217,7 +205,7 @@ struct Papyrus_Expr
 
 		struct {
 			struct Papyrus_Expr* expr;
-			struct Papyrus_TypX* type;
+			struct Papyrus_Type* type;
 		} cast;
 
 		struct {
@@ -278,15 +266,15 @@ struct Papyrus_Function
 	bool global;
 
 	struct {
-		struct Papyrus_TypX* returnType;
+		struct Papyrus_Type* returnType;
 		struct {
-			struct Papyrus_TypX** data;
+			struct Papyrus_Type** data;
 			intptr_t size;
 		} paramTypes;
 	} signature;
 
 	struct {
-		struct Papyrus_TypX** data;
+		struct Papyrus_Type** data;
 		intptr_t size;
 	} locals;
 
@@ -297,7 +285,7 @@ struct Papyrus_Variable
 {
 	struct Papyrus_Symbol symbol;
 
-	struct Papyrus_TypX* type;
+	struct Papyrus_Type* type;
 	struct Papyrus_Expr* expr;
 };
 
@@ -305,7 +293,7 @@ struct Papyrus_Property
 {
 	struct Papyrus_Symbol symbol;
 
-	struct Papyrus_TypX* type;
+	struct Papyrus_Type* type;
 
 	struct Papyrus_Variable* variable;
 	struct Papyrus_Function* get;
@@ -321,7 +309,7 @@ struct Papyrus_Script
 {
 	struct Papyrus_Symbol symbol;
 
-	struct Papyrus_TypX* type;
+	struct Papyrus_Type* type;
 
 	struct {
 		struct Papyrus_Script* script;

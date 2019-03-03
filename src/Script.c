@@ -80,10 +80,10 @@ HashTable_DEFINE_MAP(SymbolMap, struct Papyrus_String,
 HashTable_DEFINE_MAP(ExternMap, struct Papyrus_String,
 	struct Papyrus_Extern*, String_Hash, String_Equal);
 
-Array_DEFINE(TypeArray, struct Papyrus_TypX*);
+Array_DEFINE(TypeArray, struct Papyrus_Type*);
 HashTable_DEFINE_MAP(LocalMap, struct Papyrus_String,
 	intptr_t, String_Hash, String_Equal);
-Array_DEFINE_STACK(TypeStack, struct Papyrus_TypX*);
+Array_DEFINE_STACK(TypeStack, struct Papyrus_Type*);
 
 
 #define INTRINSIC_TYPES(X) \
@@ -107,7 +107,7 @@ static const struct Papyrus_Symbol IntrinsicSymbols[] = {
 };
 #undef X_ENTRY
 
-static const struct Papyrus_TypX IntrinsicArrayTypes[];
+static const struct Papyrus_Type IntrinsicArrayTypes[];
 
 #define X_ENTRY(x, k, n, f) \
 	[Papyrus_Type_ ## x] = { \
@@ -116,11 +116,11 @@ static const struct Papyrus_TypX IntrinsicArrayTypes[];
 		.flags = Papyrus_TypeFlags_Intrinsic | (f), \
 		.symbol = (struct Papyrus_Symbol*) \
 			&IntrinsicSymbols[Papyrus_Type_ ## x], \
-		.array = (struct Papyrus_TypX*) \
+		.array = (struct Papyrus_Type*) \
 			&IntrinsicArrayTypes[Papyrus_Type_ ## x], \
 	},
 
-static const struct Papyrus_TypX IntrinsicTypes[] = {
+static const struct Papyrus_Type IntrinsicTypes[] = {
 	INTRINSIC_TYPES(X_ENTRY)
 };
 #undef X_ENTRY
@@ -130,11 +130,11 @@ static const struct Papyrus_TypX IntrinsicTypes[] = {
 		.type = Papyrus_Type_Array, \
 		.kind = Papyrus_TypeKind_Array, \
 		.flags = Papyrus_TypeFlags_Intrinsic | Papyrus_TypeFlags_Array, \
-		.element = (struct Papyrus_TypX*)&IntrinsicTypes[Papyrus_Type_ ## x], \
+		.element = (struct Papyrus_Type*)&IntrinsicTypes[Papyrus_Type_ ## x], \
 		.array = NULL, \
 	},
 
-static const struct Papyrus_TypX IntrinsicArrayTypes[] = {
+static const struct Papyrus_Type IntrinsicArrayTypes[] = {
 	INTRINSIC_TYPES(X_ENTRY)
 };
 #undef X_ENTRY
@@ -142,7 +142,7 @@ static const struct Papyrus_TypX IntrinsicArrayTypes[] = {
 #undef INTRINSIC_TYPES
 
 #define IntrinsicType(x) \
-	((struct Papyrus_TypX*)&IntrinsicTypes[Papyrus_Type_ ## x])
+	((struct Papyrus_Type*)&IntrinsicTypes[Papyrus_Type_ ## x])
 
 
 typedef struct {
@@ -192,13 +192,13 @@ typedef struct {
 	// Papyrus_Syntax_Symbol* -> Papyrus_Extern*
 	struct HashTable externTable;
 
-	struct Papyrus_TypX* returnType;
+	struct Papyrus_Type* returnType;
 
 	struct Array statements;
 	intptr_t scopeStatementCount;
 
 	struct {
-		// Papyrus_TypX*
+		// Papyrus_Type*
 		struct Array types;
 
 		// Papyrus_String -> intptr_t
@@ -327,7 +327,7 @@ ResolveSymbol(BCtx* ctx, SYNTAX(Symbol)* syntax)
 	return ResolveExtern(ctx, syntax);
 }
 
-static struct Papyrus_TypX*
+static struct Papyrus_Type*
 ResolveType(BCtx* ctx, SYNTAX(Type)* syntax)
 {
 	switch (syntax->syntax.ekind)
@@ -354,18 +354,18 @@ ResolveType(BCtx* ctx, SYNTAX(Type)* syntax)
 			struct Papyrus_Extern* externSymbol =
 				(struct Papyrus_Extern*)symbol;
 
-			struct Papyrus_TypX* type = externSymbol->type;
+			struct Papyrus_Type* type = externSymbol->type;
 			if (type == NULL)
 			{
-				type = Allocate(ctx, struct Papyrus_TypX);
+				type = Allocate(ctx, struct Papyrus_Type);
 				type->type = Papyrus_Type_Extern;
 				type->kind = Papyrus_TypeKind_Extern;
 				type->flags = 0;
 				type->eflags = 0;
 				type->symbol = symbol;
 
-				struct Papyrus_TypX* arrayType =
-					Allocate(ctx, struct Papyrus_TypX);
+				struct Papyrus_Type* arrayType =
+					Allocate(ctx, struct Papyrus_Type);
 				arrayType->type = Papyrus_Type_Array;
 				arrayType->kind = Papyrus_TypeKind_Array;
 				arrayType->flags =
@@ -390,7 +390,7 @@ ResolveType(BCtx* ctx, SYNTAX(Type)* syntax)
 
 static intptr_t
 CreateLocal(BCtx* ctx, struct Papyrus_String name,
-	struct Papyrus_TypX* type, uint32_t sourceOffset)
+	struct Papyrus_Type* type, uint32_t sourceOffset)
 {
 	intptr_t index;
 
@@ -405,7 +405,7 @@ CreateLocal(BCtx* ctx, struct Papyrus_String name,
 	else
 	{
 		index = *mapIndex;
-		struct Papyrus_TypX** pType =
+		struct Papyrus_Type** pType =
 			&TypeArray_Data(&ctx->locals.types)[index];
 
 		if (*pType != NULL)
@@ -433,7 +433,7 @@ GetLocal(BCtx* ctx, struct Papyrus_String name)
 		return -1;
 
 	intptr_t index = *mapIndex;
-	struct Papyrus_TypX* type = TypeArray_Data(&ctx->locals.types)[index];
+	struct Papyrus_Type* type = TypeArray_Data(&ctx->locals.types)[index];
 
 	if (type == NULL)
 		return -1;
@@ -569,7 +569,7 @@ BuildExpr_UnaryExpr(BCtx* ctx, SYNTAX(UnaryExpr)* syntax)
 	struct Papyrus_Expr* sub = BuildExpr(ctx, syntax->expr);
 
 	uint32_t kind;
-	struct Papyrus_TypX* type = expr->type;
+	struct Papyrus_Type* type = expr->type;
 	switch (syntax->syntax.ekind)
 	{
 	case Papyrus_Syntax_UnaryExpr_Neg:
@@ -602,7 +602,7 @@ BuildExpr_BinaryExpr(BCtx* ctx, SYNTAX(BinaryExpr)* syntax)
 	struct Papyrus_Expr* rhs = BuildExpr(ctx, syntax->right);
 
 	uint32_t kind;
-	struct Papyrus_TypX* type;
+	struct Papyrus_Type* type;
 	switch (syntax->syntax.ekind)
 	{
 #ifndef __INTELLISENSE__
@@ -881,7 +881,7 @@ BuildStmt(BCtx* ctx, Syntax* syntax)
 	case Papyrus_Syntax_Variable:
 		{
 			SYNTAX(Variable)* variableSyntax = (SYNTAX(Variable)*)syntax;
-			struct Papyrus_TypX* type = ResolveType(ctx, variableSyntax->type);
+			struct Papyrus_Type* type = ResolveType(ctx, variableSyntax->type);
 
 			intptr_t index = CreateLocal(ctx,
 				variableSyntax->name, type, syntax->offset);
@@ -974,7 +974,7 @@ BuildScope(BCtx* ctx, SYNTAX(Scope)* syntax)
 		for (intptr_t i = 0; i < shadowCount; ++i)
 		{
 			intptr_t index = IntptrStack_Pop(&ctx->locals.shadowStack);
-			struct Papyrus_TypX* type =
+			struct Papyrus_Type* type =
 				TypeStack_Pop(&ctx->locals.shadowStack);
 			TypeArray_Data(&ctx->locals.types)[index] = type;
 		}
@@ -1142,12 +1142,12 @@ TypeFunction(BCtx* ctx, struct Function* function)
 		intptr_t paramCount = paramListSyntax->size;
 		if (paramCount > 0)
 		{
-			struct Papyrus_TypX** paramTypes =
-				AllocateArray(ctx, struct Papyrus_TypX*, paramCount);
+			struct Papyrus_Type** paramTypes =
+				AllocateArray(ctx, struct Papyrus_Type*, paramCount);
 
 			FOREACHV_S(x, i, paramListSyntax)
 			{
-				struct Papyrus_TypX* type = ResolveType(ctx, x->type);
+				struct Papyrus_Type* type = ResolveType(ctx, x->type);
 
 				paramTypes[i] = type;
 				CreateLocal(ctx, x->name, type, x->syntax.offset);
@@ -1376,7 +1376,7 @@ Papyrus_Script_SetExtern(struct Papyrus_Script* script,
 
 	externSymbol->link = symbol;
 
-	struct Papyrus_TypX* type = externSymbol->type;
+	struct Papyrus_Type* type = externSymbol->type;
 	if (type != NULL)
 	{
 		switch (symbol != NULL ? symbol->kind : -1)
@@ -1411,8 +1411,8 @@ Papyrus_Script_Invalidate(struct Papyrus_Script* script)
 typedef struct {
 	Ctx common;
 
-	struct Papyrus_TypX* returnType;
-	struct Papyrus_TypX** locals;
+	struct Papyrus_Type* returnType;
+	struct Papyrus_Type** locals;
 
 	struct {
 		struct Papyrus_Expr* expr;
@@ -1475,8 +1475,8 @@ FindCommonBase(struct Papyrus_Script* a, struct Papyrus_Script* b)
 	return NULL;
 }
 
-static struct Papyrus_TypX*
-CommonType(struct Papyrus_TypX* a, struct Papyrus_TypX* b)
+static struct Papyrus_Type*
+CommonType(struct Papyrus_Type* a, struct Papyrus_Type* b)
 {
 	static_assert(Papyrus_Type_Error == 0, "");
 	static const uint8_t Conversions[Papyrus_Type_N * Papyrus_Type_N] = {
@@ -1522,7 +1522,7 @@ CommonType(struct Papyrus_TypX* a, struct Papyrus_TypX* b)
 	uint8_t common = Conversions[a->type * Papyrus_Type_N + b->type];
 
 	if (LIKELY(common != (uint8_t)-1))
-		return (struct Papyrus_TypX*)&IntrinsicTypes[common];
+		return (struct Papyrus_Type*)&IntrinsicTypes[common];
 
 	assert(a->type == Papyrus_Type_Script && b->type == Papyrus_Type_Script);
 
@@ -1549,7 +1549,7 @@ IsBaseOf(struct Papyrus_Script* a, struct Papyrus_Script* b)
 }
 
 static bool
-CanCastTo(struct Papyrus_TypX* src, struct Papyrus_TypX* dst, bool explicit)
+CanCastTo(struct Papyrus_Type* src, struct Papyrus_Type* dst, bool explicit)
 {
 	switch (dst->type)
 	{
@@ -1612,9 +1612,9 @@ CanCastTo(struct Papyrus_TypX* src, struct Papyrus_TypX* dst, bool explicit)
 }
 
 static void
-ImplicitCast(ACtx* ctx, struct Papyrus_Expr* expr, struct Papyrus_TypX* type)
+ImplicitCast(ACtx* ctx, struct Papyrus_Expr* expr, struct Papyrus_Type* type)
 {
-	struct Papyrus_TypX* exprType = expr->type;
+	struct Papyrus_Type* exprType = expr->type;
 
 	if (exprType == type)
 		return;
@@ -1693,7 +1693,7 @@ static void
 AnalyzeExpr_Assign(ACtx* ctx, struct Papyrus_Expr* expr)
 {
 	struct Papyrus_Expr* object = expr->assign.object;
-	struct Papyrus_TypX* type = NULL;
+	struct Papyrus_Type* type = NULL;
 	if (object != NULL)
 	{
 		AnalyzeExpr(ctx, object);
@@ -1725,7 +1725,7 @@ AnalyzeExpr_Assign(ACtx* ctx, struct Papyrus_Expr* expr)
 
 		switch (linkSymbol->kind)
 		{
-			struct Papyrus_TypX* type;
+			struct Papyrus_Type* type;
 
 		case Papyrus_Symbol_Variable:
 			ICEA(ctx, symbol->kind != Papyrus_Symbol_Extern);
@@ -1773,7 +1773,7 @@ AnalyzeExpr_WriteLocal(ACtx* ctx, struct Papyrus_Expr* expr)
 	struct Papyrus_Expr* value = expr->assign.expr;
 	AnalyzeExpr(ctx, value);
 
-	struct Papyrus_TypX* type = ctx->locals[expr->assign.localIndex];
+	struct Papyrus_Type* type = ctx->locals[expr->assign.localIndex];
 	ImplicitCast(ctx, value, type);
 
 	expr->type = type;
@@ -1787,7 +1787,7 @@ AnalyzeExpr_Unary(ACtx* ctx, struct Papyrus_Expr* expr)
 
 	if (expr->kind == Papyrus_Expr_Neg)
 	{
-		struct Papyrus_TypX* type = subexpr->type;
+		struct Papyrus_Type* type = subexpr->type;
 		if ((type->flags & Papyrus_TypeFlags_Error) == 0 &&
 			(type->flags & Papyrus_TypeFlags_Arithmetic) == 0)
 		{
@@ -1805,11 +1805,11 @@ AnalyzeExpr_Binary(ACtx* ctx, struct Papyrus_Expr* expr)
 	struct Papyrus_Expr* rhs = expr->oper.rhs;
 	AnalyzeExpr(ctx, lhs);
 	AnalyzeExpr(ctx, rhs);
-	struct Papyrus_TypX* lhsType = lhs->type;
-	struct Papyrus_TypX* rhsType = rhs->type;
+	struct Papyrus_Type* lhsType = lhs->type;
+	struct Papyrus_Type* rhsType = rhs->type;
 
-	struct Papyrus_TypX* commonType = CommonType(lhsType, rhsType);
-	struct Papyrus_TypX* resultType;
+	struct Papyrus_Type* commonType = CommonType(lhsType, rhsType);
+	struct Papyrus_Type* resultType;
 
 	if (commonType->kind == Papyrus_Type_Error)
 	{
@@ -1886,7 +1886,7 @@ AnalyzeExpr_Cast(ACtx* ctx, struct Papyrus_Expr* expr)
 	struct Papyrus_Expr* sub = expr->cast.expr;
 	AnalyzeExpr(ctx, sub);
 
-	struct Papyrus_TypX* type = expr->cast.type;
+	struct Papyrus_Type* type = expr->cast.type;
 
 	if (type->kind != Papyrus_Type_Error)
 		if (!CanCastTo(sub->type, type, true))
@@ -1954,10 +1954,10 @@ AnalyzeExpr_Call(ACtx* ctx, struct Papyrus_Expr* expr)
 			argsCount = MIN(paramCount, argsCount);
 		}
 
-		struct Papyrus_TypX** params = function->signature.paramTypes.data;
+		struct Papyrus_Type** params = function->signature.paramTypes.data;
 		FOREACHV(x, i, expr->call.args.data, argsCount)
 		{
-			struct Papyrus_TypX* argType = x->type;
+			struct Papyrus_Type* argType = x->type;
 			if ((argType->flags & Papyrus_TypeFlags_Error) == 0)
 			{
 				if (!CanCastTo(argType, params[i], false))
@@ -1982,7 +1982,7 @@ AnalyzeExpr_ReadArray(ACtx* ctx, struct Papyrus_Expr* expr)
 	struct Papyrus_Expr* array = expr->assign.array;
 	AnalyzeExpr(ctx, array);
 
-	struct Papyrus_TypX* arrayType = array->type;
+	struct Papyrus_Type* arrayType = array->type;
 	bool isArray = arrayType->type == Papyrus_Type_Array;
 	if (!isArray)
 	{
@@ -2009,7 +2009,7 @@ AnalyzeExpr_WriteArray(ACtx* ctx, struct Papyrus_Expr* expr)
 	struct Papyrus_Expr* array = expr->assign.array;
 	AnalyzeExpr(ctx, array);
 
-	struct Papyrus_TypX* arrayType = array->type;
+	struct Papyrus_Type* arrayType = array->type;
 	bool isArray = arrayType->type == Papyrus_Type_Array;
 	if (!isArray)
 	{
@@ -2025,7 +2025,7 @@ AnalyzeExpr_WriteArray(ACtx* ctx, struct Papyrus_Expr* expr)
 
 	if (isArray)
 	{
-		struct Papyrus_TypX* type = arrayType->element;
+		struct Papyrus_Type* type = arrayType->element;
 		ImplicitCast(ctx, value, type);
 		expr->type = type;
 	}
