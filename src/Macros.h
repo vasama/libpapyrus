@@ -68,18 +68,18 @@ size: size of the array, in elements. */
 
 #ifdef __INTELLISENSE__
 #define FOREACH_(xvar, ivar, a, pf, pfc, cf, cfc, xf) \
-	for (intptr_t ivar = cf(a, cfc);;) \
-	for (auto xvar = xf(pf(a, pfc));;)
+	for (intptr_t ivar = cf((a), cfc);;) \
+	for (auto xvar = xf(pf((a), pfc));;)
 #else
 #define FOREACH_(xvar, ivar, a, pf, pfc, cf, cfc, xf) \
 	for (intptr_t FOREACH_i = 0, FOREACH_c, \
 		FOREACH_x = 1, UNUSED ivar; FOREACH_x;) \
 	for (__typeof__(a) UNUSED FOREACH_a = (a); \
-		FOREACH_c = cf(FOREACH_a, cfc), FOREACH_x;) \
-	for (__typeof__(*pf(FOREACH_a, pfc))* \
-		FOREACH_p = pf(a, pfc); FOREACH_x; FOREACH_x = 0) \
+		FOREACH_c = (cf(FOREACH_a, cfc)), FOREACH_x;) \
+	for (__typeof__(*(pf(FOREACH_a, pfc)))* \
+		FOREACH_p = pf(FOREACH_a, pfc); FOREACH_x; FOREACH_x = 0) \
 	for (__typeof__(xf(FOREACH_p)) xvar; FOREACH_i < FOREACH_c && (xvar \
-		= xf((FOREACH_p + FOREACH_i)), ivar = FOREACH_i, 1); ++FOREACH_i)
+		= (xf((FOREACH_p + FOREACH_i))), ivar = FOREACH_i, 1); ++FOREACH_i)
 #endif
 
 #define FOREACHP_xf(x) x
@@ -94,10 +94,10 @@ size: size of the array, in elements. */
 /* FOREACH_S(element-var, index-var, span)
 span: pointer to struct { T* data; intptr_t size; } */
 #define FOREACH_S(xvar, ivar, span) \
-	FOREACHP_(xvar, ivar, (&*(span)), FOREACH_S_pf,, FOREACH_S_cf,)
+	FOREACHP_(xvar, ivar, &*(span), FOREACH_S_pf,, FOREACH_S_cf,)
 
 #define FOREACHV_S(xvar, ivar, span) \
-	FOREACHV_(xvar, ivar, (&*(span)), FOREACH_S_pf,, FOREACH_S_cf,)
+	FOREACHV_(xvar, ivar, &*(span), FOREACH_S_pf,, FOREACH_S_cf,)
 
 #define FOREACH_S_pf(x, c) x->data
 #define FOREACH_S_cf(x, c) x->size

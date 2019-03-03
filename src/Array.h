@@ -273,13 +273,13 @@ versions of the generic functions. */
 			(uintptr_t)minCapacity * sizeof(type), allocator); \
 	}
 
-#define Array_FOREACH_getp(x, t) (t*)Array_Data(x)
-#define Array_FOREACH_getc(x, t) Array_Size(x) / sizeof(t)
+#define Array_FOREACH_pf(x, t) (t*)Array_Data(x)
+#define Array_FOREACH_cf(x, t) Array_Size(x) / sizeof(t)
 
 #define Array_FOREACH(xvar, ivar, type, array) \
-	FOREACHP_(xvar, ivar, type, struct Array*, \
-		array, Array_FOREACH_getp, Array_FOREACH_getc)
+	FOREACHP_(xvar, ivar, &*(array), \
+		Array_FOREACH_pf, type, Array_FOREACH_cf, type)
 
 #define Array_FOREACHV(xvar, ivar, type, array) \
-	FOREACHV_(xvar, ivar, type, struct array*, \
-		array, Array_FOREACH_getp, Array_FOREACH_getc)
+	FOREACHV_(xvar, ivar, &*(array), \
+		Array_FOREACH_pf, type, Array_FOREACH_cf, type)
