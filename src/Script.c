@@ -655,6 +655,51 @@ BuildExpr_AccessExpr(BCtx* ctx, SYNTAX(AccessExpr)* syntax)
 }
 
 static struct Papyrus_Expr*
+BuildExpr_CallExpr(BCtx* ctx, SYNTAX(CallExpr)* syntax)
+{
+	struct Papyrus_Expr* expr = Allocate(ctx, struct Papyrus_Expr);
+
+	struct Papyrus_Expr* func = syntax->expr;
+	switch (func->kind)
+	{
+	case Papyrus_Syntax_NameExpr:
+		{
+			SYNTAX(NameExpr)* name = (SYNTAX(NameExpr)*)func;
+			expr->call.object = NULL;
+			expr->call.name = NULL;
+			expr->call.symbol = ResolveSymbol(ctx, name->symbol);
+		}
+		break;
+
+	case Papyrus_Syntax_AccessExpr:
+		{
+			SYNTAX(AccessExpr)* access = (SYNTAX(AccessExpr)*)func;
+			expr->call.object = BuildExpr(ctx, access->expr);
+			expr->call.name = CreatePascalString(ctx, access->name);
+			expr->call.symbol = NULL;
+		}
+		break;
+	}
+
+	intptr_t argCount = syntax->args.size;
+	struct Papyrus_Expr** args = AllocateArray(
+		ctx, struct Papyrus_Expr*, argCount);
+
+	FOREACHV_S(argSyntax, arg_i, &syntax->args)
+	{
+		args[arg_i] = BuildExpr(ctx, argSyntax);
+	}
+
+	expr->kind = Papyrus_Expr_Call;
+	expr->ekind = 0;
+	expr->flags = 0;
+	expr->type = IntrinsicType(Error);
+	expr->call.args.data = args;
+	expr->call.args.size = argCount;
+	return expr;
+}
+
+static struct Papyrus_Expr*
 BuildExpr(BCtx* ctx, Syntax* syntax)
 {
 	struct Papyrus_Expr* expr;
@@ -670,6 +715,7 @@ BuildExpr(BCtx* ctx, Syntax* syntax)
 		EXPR(UnaryExpr);
 		EXPR(BinaryExpr);
 		EXPR(AccessExpr);
+		EXPR(CallExpr);
 #undef EXPR
 
 	default:
@@ -1854,30 +1900,22 @@ AnalyzeExpr_Cast(ACtx* ctx, struct Papyrus_Expr* expr)
 static void
 AnalyzeExpr_Call(ACtx* ctx, struct Papyrus_Expr* expr)
 {
-	struct Papyrus_Expr* callable = expr->call.func;
-	AnalyzeExpr(ctx, callable);
+	struct Papyrus_Expr* object = expr->call.object;
+	struct Papyrus_Symbol* symbol;
+
+	if (object != NULL)
+	{
+		AnalyzeExpr(ctx, object);
+		assert(false); // get symbol
+	}
+	else
+	{
+		symbol = expr->call.symbol;
+	}
 
 	FOREACHV_S(x, i, &expr->call.args)
 	{
 		AnalyzeExpr(ctx, x);
-	}
-
-	struct Papyrus_Expr* object;
-	struct Papyrus_Symbol* symbol;
-	switch (callable->kind)
-	{
-	case Papyrus_Expr_Symbol:
-		object = NULL;
-		symbol = callable->symbol;
-		break;
-
-	case Papyrus_Expr_Access:
-		object = callable->access.expr;
-		symbol = callable->access.symbol;
-		break;
-
-	default:
-		ICE(ctx);
 	}
 
 	if (symbol->kind == Papyrus_Symbol_Function)
@@ -1888,7 +1926,7 @@ AnalyzeExpr_Call(ACtx* ctx, struct Papyrus_Expr* expr)
 		{
 			if (object == NULL)
 			{
-				ReportError(ctx, callable->source,
+				ReportError(ctx, expr->source,
 					"call to global function with an object argument");
 			}
 		}
@@ -1896,7 +1934,7 @@ AnalyzeExpr_Call(ACtx* ctx, struct Papyrus_Expr* expr)
 		{
 			if (object != NULL)
 			{
-				ReportError(ctx, callable->source,
+				ReportError(ctx, expr->source,
 					"call to method without an object argument");
 			}
 		}
@@ -1934,7 +1972,7 @@ AnalyzeExpr_Call(ACtx* ctx, struct Papyrus_Expr* expr)
 	}
 	else
 	{
-		ReportError(ctx, callable->source, "expression is not callable");
+		ReportError(ctx, expr->source, "expression is not callable");
 	}
 }
 

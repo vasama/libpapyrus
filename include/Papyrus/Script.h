@@ -221,7 +221,9 @@ struct Papyrus_Expr
 		} cast;
 
 		struct {
-			struct Papyrus_Expr* func;
+			struct Papyrus_Expr* object;
+			struct Papyrus_PascalString* name;
+			struct Papyrus_Symbol* symbol;
 			struct {
 				struct Papyrus_Expr** data;
 				intptr_t size;
