@@ -21,7 +21,7 @@ String_Add(struct Eval lhs, struct Eval rhs, struct Arena* arena)
 	{
 		char* buffer = Arena_Allocate(arena, result.string_size);
 		memcpy(buffer, lhs.string_data, lhs.string_size);
-		memcpy(buffer + lhs.string_size, rhs.string_data, rhs.string_data);
+		memcpy(buffer + lhs.string_size, rhs.string_data, rhs.string_size);
 		result.string_data = buffer;
 	}
 	return result;
@@ -329,9 +329,13 @@ Papyrus_Eval(const struct Papyrus_Expr* expr, struct Arena* arena)
 
 			case Papyrus_Type_String:
 				assert(false);
+				result.type = Eval_String;
+				result.string_size = 0;
 				break;
 			}
 		}
 		break;
 	}
+
+	return result;
 }
