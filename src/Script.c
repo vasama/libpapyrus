@@ -661,23 +661,23 @@ BuildExpr_CallExpr(BCtx* ctx, SYNTAX(CallExpr)* syntax)
 {
 	struct Papyrus_Expr* expr = Allocate(ctx, struct Papyrus_Expr);
 
-	struct Papyrus_Expr* func = syntax->expr;
-	switch (func->kind)
+	Syntax* funcSyntax = syntax->expr;
+	switch (funcSyntax->kind)
 	{
 	case Papyrus_Syntax_NameExpr:
 		{
-			SYNTAX(NameExpr)* name = (SYNTAX(NameExpr)*)func;
+			SYNTAX(NameExpr)* exprSyntax = (SYNTAX(NameExpr)*)funcSyntax;
 			expr->call.object = NULL;
 			expr->call.name = NULL;
-			expr->call.symbol = ResolveSymbol(ctx, name->symbol);
+			expr->call.symbol = ResolveSymbol(ctx, exprSyntax->symbol);
 		}
 		break;
 
 	case Papyrus_Syntax_AccessExpr:
 		{
-			SYNTAX(AccessExpr)* access = (SYNTAX(AccessExpr)*)func;
-			expr->call.object = BuildExpr(ctx, access->expr);
-			expr->call.name = CreatePascalString(ctx, access->name);
+			SYNTAX(AccessExpr)* exprSyntax = (SYNTAX(AccessExpr)*)funcSyntax;
+			expr->call.object = BuildExpr(ctx, exprSyntax->expr);
+			expr->call.name = CreatePascalString(ctx, exprSyntax->name);
 			expr->call.symbol = NULL;
 		}
 		break;
