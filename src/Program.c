@@ -137,6 +137,8 @@ void
 Papyrus_Program_RemoveScript(struct Papyrus_Program* program,
 	struct Papyrus_Script* publicScript)
 {
+	(void)program;
+
 	struct ScriptInternal* script = (struct ScriptInternal*)publicScript;
 	
 	// for each external symbol used in the script

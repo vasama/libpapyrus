@@ -515,7 +515,7 @@ Papyrus_HashTable_Remove(struct HashTable* table,
 			else
 			{
 				// save pointer to the removed element
-				void* elem = slot.elem;
+				void* rem = slot.elem;
 
 				// find the last slot in the chain
 				while (true)
@@ -533,7 +533,7 @@ Papyrus_HashTable_Remove(struct HashTable* table,
 
 				// move the element from the last slot
 				// to the slot of the removed element
-				memcpy(elem, slot.elem, elemSize);
+				memcpy(rem, slot.elem, elemSize);
 
 				// mark the penultimate slot as last
 				*prevCtrl = (*prevCtrl & Ctrl_Flag) | Ctrl_Last;

@@ -120,8 +120,6 @@ enum Keyword
 	Key_While,
 };
 
-typedef uint32_t Keyword;
-
 #include "Keyword_Hash.i"
 
 /* 16 chars is enough for all keywords, including null terminators, and enables
@@ -182,7 +180,7 @@ Keyword_Hash(const uint8_t* string, intptr_t size)
 	return (Keyword_Hash_g[f0] + Keyword_Hash_g[f1]) % SIZE(Keyword_Strings);
 }
 
-static Keyword
+static uint32_t
 GetKeyword(struct Papyrus_String string)
 {
 	if (string.size < Keyword_MinSize || string.size > Keyword_MaxSize)
@@ -209,11 +207,11 @@ GetKeyword(struct Papyrus_String string)
 static bool
 IsKeyword(struct Papyrus_String string)
 {
-	return GetKeyword(string) != -1;
+	return GetKeyword(string) != -1u;
 }
 
 static bool
-IsSpecificKeyword(struct Papyrus_String string, Keyword key)
+IsSpecificKeyword(struct Papyrus_String string, uint32_t key)
 {
 	if (string.size < Keyword_MinSize || string.size > Keyword_MaxSize)
 		return false;
@@ -249,12 +247,15 @@ struct Synbuf_Reference
 	struct Synbuf* synbuf;
 };
 
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wflexible-array-extensions"
 struct Synbuf
 {
 	struct Synbuf_Reference prev;
 	struct Arena_Pos pos;
 	struct Synbuf_Header header;
 };
+#pragma clang diagnostic pop
 
 typedef struct {
 	struct Papyrus_SyntaxTree* tree;
@@ -421,7 +422,7 @@ Synbuf_Commit_(Ctx* ctx, uintptr_t objSize,
 
 enum { MaxLookahead = 2 };
 
-static enum Token
+static uint32_t
 PeekInternal(Ctx* ctx, intptr_t lookahead)
 {
 	assert(lookahead <= MaxLookahead);
@@ -510,7 +511,7 @@ PeekInternal(Ctx* ctx, intptr_t lookahead)
 	return tokens[lookahead];
 }
 
-static inline enum Token
+static inline uint32_t
 Peek_(Ctx* ctx, intptr_t lookahead)
 {
 	intptr_t index = ctx->lex.index + lookahead;
@@ -708,7 +709,7 @@ TryConsume_(Ctx* ctx, uint32_t token)
 #define TryConsume(token) TryConsume_(ctx, (token))
 
 static inline bool
-ConsumeOrSetError(Ctx* ctx, uint32_t token, struct Papyrus_Syntax* syntax)
+ConsumeOrSetError_(Ctx* ctx, uint32_t token, struct Papyrus_Syntax* syntax)
 {
 	if (TryConsume_(ctx, token))
 		return true;
@@ -719,7 +720,7 @@ ConsumeOrSetError(Ctx* ctx, uint32_t token, struct Papyrus_Syntax* syntax)
 }
 
 #define ConsumeOrSetError(token, syntax) \
-	ConsumeOrSetError(ctx, (token), (struct Papyrus_Syntax*)(syntax))
+	ConsumeOrSetError_(ctx, (token), (struct Papyrus_Syntax*)(syntax))
 
 static inline bool
 TryConsumeKeyword_(Ctx* ctx, uint32_t keyword)
@@ -770,7 +771,7 @@ TryConsumeName_(Ctx* ctx, struct Papyrus_String* out)
 #define TryConsumeName(out) TryConsumeName_(ctx, (out))
 
 static inline bool
-ConsumeNameOrSetError(Ctx* ctx,
+ConsumeNameOrSetError_(Ctx* ctx,
 	struct Papyrus_Syntax* syntax, struct Papyrus_String* out)
 {
 	if (TryConsumeName_(ctx, out))
@@ -782,7 +783,7 @@ ConsumeNameOrSetError(Ctx* ctx,
 }
 
 #define ConsumeNameOrSetError(syntax, out) \
-	ConsumeNameOrSetError(ctx, (struct Papyrus_Syntax*)(syntax), (out))
+	ConsumeNameOrSetError_(ctx, (struct Papyrus_Syntax*)(syntax), (out))
 
 static inline void
 ConsumeLine_(Ctx* ctx)
@@ -1311,9 +1312,11 @@ exit:
 
 
 static bool
-ParseFlags(Ctx* ctx, uint32_t mask,uint32_t umask,
+ParseFlags(Ctx* ctx, uint32_t mask, uint32_t umask,
 	uint32_t* flagsOut, uint32_t* uflagsOut)
 {
+	(void)umask;
+
 	bool result = true;
 
 	uint32_t flags = 0;
@@ -1588,13 +1591,15 @@ ParseState(Ctx* ctx, uint32_t flags)
 
 	ConsumeNameOrSetError(new, &new->name);
 
+	new->syntax.eflags = flags;
+
 	new->scope = ParseDeclScope(ctx, Decl_Function | Decl_Event, Key_EndState);
 	PropagateError(new, new->scope);
 
 	ConsumeKeywordOrSetError(Key_EndState, new);
 
 	return new;
-};
+}
 
 static struct Papyrus_Syntax_Variable*
 ParseVariable(Ctx* ctx, struct Papyrus_Syntax_Type* type)
@@ -1922,7 +1927,7 @@ ParseDeclScope(Ctx* ctx, uint32_t mask, uint32_t close)
 			case Key_EndFunction:
 			case Key_EndProperty:
 			case Key_EndState:
-				if (mask == -1) // root
+				if (mask == -1u) // root
 				{
 					ReportError_UnexpectedToken(ctx, NULL);
 					Consume(1);
