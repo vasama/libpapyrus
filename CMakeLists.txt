@@ -14,6 +14,7 @@ add_library(libpapyrus
 	src/HashTable.c
 	src/ObjectGraph.c
 
+	src/Eval.c
 	src/DumpAST.c
 	src/Parser.c
 	src/Program.c
