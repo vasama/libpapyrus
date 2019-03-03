@@ -107,15 +107,7 @@ static const struct Papyrus_Symbol IntrinsicSymbols[] = {
 };
 #undef X_ENTRY
 
-#if !defined(__clang__) && defined(_MSC_VER)
-#	define IntrinsicArrayTypes Papyrus_Script_IntrinsicIntrinsicArrayTypes
-#	define IntrinsicArrayTypes_SPEC
-extern
-#else
-#	define IntrinsicArrayTypes IntrinsicArrayTypes
-#	define IntrinsicArrayTypes_SPEC static
-#endif
-IntrinsicArrayTypes_SPEC const struct Papyrus_TypX IntrinsicArrayTypes[];
+static const struct Papyrus_TypX IntrinsicArrayTypes[];
 
 #define X_ENTRY(x, k, n, f) \
 	[Papyrus_Type_ ## x] = { \
@@ -142,13 +134,11 @@ static const struct Papyrus_TypX IntrinsicTypes[] = {
 		.array = NULL, \
 	},
 
-IntrinsicArrayTypes_SPEC const struct Papyrus_TypX IntrinsicArrayTypes[] = {
+static const struct Papyrus_TypX IntrinsicArrayTypes[] = {
 	INTRINSIC_TYPES(X_ENTRY)
 };
 #undef X_ENTRY
 
-#undef IntrinsicArrayTypes
-#undef IntrinsicArrayTypes_SPEC
 #undef INTRINSIC_TYPES
 
 #define IntrinsicType(x) \
@@ -202,7 +192,7 @@ typedef struct {
 	// Papyrus_Syntax_Symbol* -> Papyrus_Extern*
 	struct HashTable externTable;
 
-	struct Papyrus_Type returnType;
+	struct Papyrus_TypX* returnType;
 
 	struct Array statements;
 	intptr_t scopeStatementCount;
@@ -463,7 +453,7 @@ static uintptr_t
 CommitArray_(BCtx* ctx, struct Array* array, void** out)
 {
 	uintptr_t size = Array_Size(array);
-	void* data = malloc(size);
+	void* data = Allocate_(&ctx->common, size);
 	memcpy(data, Array_Data(array), size);
 	*out = data;
 	return size;
@@ -1293,6 +1283,7 @@ Papyrus_Script_Create(
 	BCtx ctx;
 	ctx.common.script = script;
 	ctx.common.allocator = allocator;
+	ctx.common.diag = diag;
 	Arena_Init(&ctx.common.arena, pool);
 
 	Array_Init(&ctx.exports);
@@ -1330,6 +1321,8 @@ void
 Papyrus_Script_SetExtern(struct Papyrus_Script* script,
 	struct Papyrus_Extern* externSymbol, struct Papyrus_Symbol* symbol)
 {
+	(void)script;
+
 	static const struct Papyrus_Symbol ErrorSymbol = {
 		.kind = Papyrus_Symbol_Intrinsic,
 		.name = Papyrus_String_INIT("<undefined-extern-symbol>"),
@@ -1415,15 +1408,6 @@ LinkSymbol(ACtx* ctx, struct Papyrus_Symbol* symbol)
 		struct Symbol, list)->symbol;
 }
 
-/*static struct Papyrus_TypX*
-LinkType(ACtx* ctx, struct Papyrus_TypX* type)
-{
-	if (type->kind != Papyrus_Type_Extern)
-		return type;
-
-	return ((struct Papyrus_Extern*)type->symbol)->type;
-}*/
-
 static struct Papyrus_Script*
 FindCommonBase(struct Papyrus_Script* a, struct Papyrus_Script* b)
 {
@@ -1502,15 +1486,6 @@ CommonType(struct Papyrus_TypX* a, struct Papyrus_TypX* b)
 	if (commonScript != NULL)
 	{
 		return commonScript->type;
-
-#if 0
-		return (struct Papyrus_Type) {
-			.type = Papyrus_Type_Script,
-			.kind = Papyrus_TypeKind_Script,
-			.flags = Papyrus_TypeFlags_Composite,
-			.symbol = &commonScript->symbol,
-		};
-#endif
 	}
 
 	return IntrinsicType(Error);
@@ -1627,12 +1602,6 @@ ImplicitCast(ACtx* ctx, struct Papyrus_Expr* expr, struct Papyrus_TypX* type)
 	}
 }
 
-
-static void
-AnalyzeType(ACtx* ctx, struct Papyrus_TypX* type)
-{
-	//TODO: check type
-}
 
 
 static void
@@ -2179,8 +2148,6 @@ AnalyzeScope(ACtx* ctx, struct Papyrus_Scope scope)
 static void
 AnalyzeVariable(ACtx* ctx, struct Papyrus_Variable* variable)
 {
-	AnalyzeType(ctx, variable->type);
-
 	struct Papyrus_Expr* expr = variable->expr;
 	AnalyzeExpr(ctx, expr);
 
@@ -2195,16 +2162,6 @@ AnalyzeVariable(ACtx* ctx, struct Papyrus_Variable* variable)
 static void
 AnalyzeFunction(ACtx* ctx, struct Papyrus_Function* function)
 {
-	AnalyzeType(ctx, function->signature.returnType);
-	FOREACHV_S(x, x_i, &function->signature.paramTypes)
-	{
-		AnalyzeType(ctx, x);
-	}
-	FOREACHV_S(x, x_i, &function->locals)
-	{
-		AnalyzeType(ctx, x);
-	}
-
 	ctx->returnType = function->signature.returnType;
 	ctx->locals = function->locals.data;
 	AnalyzeScope(ctx, function->scope);
