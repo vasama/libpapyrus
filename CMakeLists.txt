@@ -29,6 +29,7 @@ add_library(libpapyrus
 	src/FNV.c
 	src/HashTable.c
 	src/ObjectGraph.c
+	src/String.c
 
 	src/Eval.c
 	src/DumpAST.c

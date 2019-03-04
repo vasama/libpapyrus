@@ -9,8 +9,11 @@ struct Papyrus_String
 	intptr_t size;
 };
 
-#define Papyrus_String_INIT(strlit) { .data = strlit, .size = sizeof(strlit) - 1 }
-#define Papyrus_String_CREATE(strlit) ((struct Papyrus_String) Papyrus_String_INIT(strlit))
+#define Papyrus_String_INIT(strlit) \
+	{ .data = strlit, .size = sizeof(strlit) - 1 }
+
+#define Papyrus_String_CREATE(strlit) \
+	((struct Papyrus_String) Papyrus_String_INIT(strlit))
 
 static inline int32_t
 Papyrus_String_Compare(struct Papyrus_String a, struct Papyrus_String b)
@@ -19,9 +22,5 @@ Papyrus_String_Compare(struct Papyrus_String a, struct Papyrus_String b)
 	return strncmp(a.data, b.data, size);
 }
 
-static inline int32_t
-Papyrus_String_ICompare(struct Papyrus_String a, struct Papyrus_String b)
-{
-	intptr_t size = a.size < b.size ? a.size : b.size;
-	return _strnicmp(a.data, b.data, size);
-}
+int32_t
+Papyrus_String_ICompare(struct Papyrus_String a, struct Papyrus_String b);
