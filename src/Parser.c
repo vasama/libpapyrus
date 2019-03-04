@@ -247,15 +247,16 @@ struct Synbuf_Reference
 	struct Synbuf* synbuf;
 };
 
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wflexible-array-extensions"
+PRAGMA_DIAG(push)
+PRAGMA_DIAG_CLANG(ignored "-Wflexible-array-extensions")
+PRAGMA_DIAG_GCC(ignored "-Wpedantic")
 struct Synbuf
 {
 	struct Synbuf_Reference prev;
 	struct Arena_Pos pos;
 	struct Synbuf_Header header;
 };
-#pragma clang diagnostic pop
+PRAGMA_DIAG(pop)
 
 typedef struct {
 	struct Papyrus_SyntaxTree* tree;

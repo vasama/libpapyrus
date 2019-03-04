@@ -3,24 +3,43 @@
 #include <assert.h>
 #include <stdint.h>
 
-#define CAT_(a, b) a ## b
-#define CAT(a, b) CAT_(a, b)
+#define PP_CAT_(a, b) a ## b
+#define PP_CAT(a, b) PP_CAT_(a, b)
+
+#define PP_STR_(x) #x
+#define PP_STR(x) PP_STR_(x)
+
+#define PRAGMA_DIAG_(cc, ...) _Pragma(PP_STR(cc diagnostic __VA_ARGS__))
+
+#ifdef __INTELLISENSE__
+#	define PRAGMA_DIAG(...)
+#	define PRAGMA_DIAG_CLANG(...)
+#	define PRAGMA_DIAG_GCC(...)
+#elif defined(__clang__)
+#	define PRAGMA_DIAG(...) PRAGMA_DIAG_(clang, __VA_ARGS__)
+#	define PRAGMA_DIAG_CLANG(...) PRAGMA_DIAG(__VA_ARGS__)
+#	define PRAGMA_DIAG_GCC(...)
+#elif defined(__GNUC__)
+#	define PRAGMA_DIAG(...) PRAGMA_DIAG_(GCC, __VA_ARGS__)
+#	define PRAGMA_DIAG_CLANG(...)
+#	define PRAGMA_DIAG_GCC(...) PRAGMA_DIAG(__VA_ARGS__)
+#endif
 
 #ifndef static_assert
 #	define static_assert(expr, message) \
-		struct CAT(static_assert_, __COUNTER__) { char x[(expr) ? 1 : -1]; }
+		struct PP_CAT(static_assert_, __COUNTER__) { char x[(expr) ? 1 : -1]; }
 #endif
 
 #ifdef __INTELLISENSE__
-#define LIKELY(...) __VA_ARGS__
-#define UNLIKELY(...) __VA_ARGS__
-#define NORETURN __declspec(noreturn)
-#define UNUSED
+#	define LIKELY(...) __VA_ARGS__
+#	define UNLIKELY(...) __VA_ARGS__
+#	define NORETURN __declspec(noreturn)
+#	define UNUSED
 #else
-#define LIKELY(...) __builtin_expect((__VA_ARGS__), 1)
-#define UNLIKELY(...) __builtin_expect((__VA_ARGS__), 0)
-#define NORETURN __attribute__((noreturn))
-#define UNUSED __attribute__((unused))
+#	define LIKELY(...) __builtin_expect((__VA_ARGS__), 1)
+#	define UNLIKELY(...) __builtin_expect((__VA_ARGS__), 0)
+#	define NORETURN __attribute__((noreturn))
+#	define UNUSED __attribute__((unused))
 #endif
 
 #define SIZE(x) (sizeof(x) / (sizeof(*(x))))
@@ -102,4 +121,4 @@ span: pointer to struct { T* data; intptr_t size; } */
 #define FOREACH_S_pf(x, c) x->data
 #define FOREACH_S_cf(x, c) x->size
 
-#define EXPECT_SEMICOLON typedef int CAT(EXPECT_SEMICOLON_,__LINE__)
+#define EXPECT_SEMICOLON typedef int PP_CAT(EXPECT_SEMICOLON_,__LINE__)

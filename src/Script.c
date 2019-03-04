@@ -97,27 +97,25 @@ Array_DEFINE_STACK(TypeStack, struct Papyrus_Type*);
 	X(String, Primitive, "string", Papyrus_TypeFlags_Primitive) \
 
 #define X_ENTRY(x, k, n, f) \
-	[Papyrus_Type_ ## x] = { \
+	static const struct Papyrus_Symbol IntrinsicSymbol_ ## x = { \
 		.kind = Papyrus_Symbol_Intrinsic, \
 		.name = Papyrus_String_INIT(n), \
-	},
-
-static const struct Papyrus_Symbol IntrinsicSymbols[] = {
-	INTRINSIC_TYPES(X_ENTRY)
-};
+	};
+INTRINSIC_TYPES(X_ENTRY)
 #undef X_ENTRY
 
-static const struct Papyrus_Type IntrinsicArrayTypes[];
+#define X_ENTRY(x, k, n, f) \
+	static const struct Papyrus_Type IntrinsicArrayType_ ## x;
+INTRINSIC_TYPES(X_ENTRY)
+#undef X_ENTRY
 
 #define X_ENTRY(x, k, n, f) \
 	[Papyrus_Type_ ## x] = { \
 		.type = Papyrus_Type_ ## x, \
 		.kind = Papyrus_TypeKind_ ## k, \
 		.flags = Papyrus_TypeFlags_Intrinsic | (f), \
-		.symbol = (struct Papyrus_Symbol*) \
-			&IntrinsicSymbols[Papyrus_Type_ ## x], \
-		.array = (struct Papyrus_Type*) \
-			&IntrinsicArrayTypes[Papyrus_Type_ ## x], \
+		.symbol = (struct Papyrus_Symbol*)&IntrinsicSymbol_ ## x, \
+		.array = (struct Papyrus_Type*)&IntrinsicArrayType_ ## x, \
 	},
 
 static const struct Papyrus_Type IntrinsicTypes[] = {
@@ -126,17 +124,14 @@ static const struct Papyrus_Type IntrinsicTypes[] = {
 #undef X_ENTRY
 
 #define X_ENTRY(x, k, n, f) \
-	[Papyrus_Type_ ## x] = { \
+	static const struct Papyrus_Type IntrinsicArrayType_ ## x = { \
 		.type = Papyrus_Type_Array, \
 		.kind = Papyrus_TypeKind_Array, \
 		.flags = Papyrus_TypeFlags_Intrinsic | Papyrus_TypeFlags_Array, \
 		.element = (struct Papyrus_Type*)&IntrinsicTypes[Papyrus_Type_ ## x], \
 		.array = NULL, \
-	},
-
-static const struct Papyrus_Type IntrinsicArrayTypes[] = {
-	INTRINSIC_TYPES(X_ENTRY)
-};
+	};
+INTRINSIC_TYPES(X_ENTRY)
 #undef X_ENTRY
 
 #undef INTRINSIC_TYPES
