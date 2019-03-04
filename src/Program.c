@@ -128,9 +128,7 @@ Papyrus_Program_AddScript(struct Papyrus_Program* program,
 		internal->link = linkSymbol;
 	}
 
-#ifndef NDEBUG
-	publicScript->symbol.eflags |= Papyrus_ScriptFlags_Debug_Linked;
-#endif
+	publicScript->symbol.eflags |= Papyrus_ScriptFlags_Linked;
 }
 
 void
@@ -169,7 +167,5 @@ Papyrus_Program_RemoveScript(struct Papyrus_Program* program,
 
 	List_Remove(&GetSymbol(&publicScript->symbol)->list);
 
-#ifndef NDEBUG
-	publicScript->symbol.eflags &= ~Papyrus_ScriptFlags_Debug_Linked;
-#endif
+	publicScript->symbol.eflags &= ~Papyrus_ScriptFlags_Linked;
 }

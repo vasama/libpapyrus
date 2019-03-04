@@ -34,11 +34,6 @@ GetSymbol(struct Papyrus_Symbol* symbol)
 	return (struct Symbol*)symbol - 1;
 }
 
-enum
-{
-	Papyrus_ScriptFlags_Debug_Linked = 0x80000000,
-};
-
 struct ScriptInternal
 {
 	struct Papyrus_Script public;

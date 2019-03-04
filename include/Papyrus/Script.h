@@ -303,7 +303,8 @@ struct Papyrus_Property
 
 enum
 {
-	Papyrus_ScriptFlags_Analyzed = 0x1,
+	Papyrus_ScriptFlags_Linked = 0x1,
+	Papyrus_ScriptFlags_Analyzed = 0x2,
 };
 
 struct Papyrus_Script

@@ -2211,7 +2211,7 @@ void
 Papyrus_Script_Analyze(
 	struct Papyrus_Script* script, struct Papyrus_Diagnostics* diag)
 {
-	assert(script->symbol.eflags & Papyrus_ScriptFlags_Debug_Linked);
+	assert(script->symbol.eflags & Papyrus_ScriptFlags_Linked);
 
 	ACtx ctx;
 	ctx.common.diag = diag;
