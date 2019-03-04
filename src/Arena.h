@@ -10,6 +10,8 @@ cheaply discarding any allocations made after the position was saved. */
 
 #include "Papyrus/Arena.h"
 
+#include "Macros.h"
+
 #ifndef NDEBUG
 #	include <string.h>
 #endif
@@ -82,8 +84,7 @@ Arena_Allocate(struct Arena* arena, uintptr_t size)
 	void*
 	Papyrus_Arena_Allocate(struct Arena* arena, uintptr_t size);
 
-	// round up to align
-	size = size + 7 & -8;
+	size = ALIGN(size, 8);
 
 	char* cur = arena->cur;
 	char* new = cur + size;

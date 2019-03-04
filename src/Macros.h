@@ -29,7 +29,7 @@
 #define MAX(a, b) ((a) > (b) ? (a) : (b))
 
 // round x up to a, where a = 2^n
-#define ALIGN(x, a) ((x) + (a) - 1 & -(a))
+#define ALIGN(x, a) (((x) + (a) - 1) & -(a))
 
 // SWAP(T* a, T* b)
 #define SWAP(a, b) \
@@ -101,3 +101,5 @@ span: pointer to struct { T* data; intptr_t size; } */
 
 #define FOREACH_S_pf(x, c) x->data
 #define FOREACH_S_cf(x, c) x->size
+
+#define EXPECT_SEMICOLON typedef int CAT(EXPECT_SEMICOLON_,__LINE__)

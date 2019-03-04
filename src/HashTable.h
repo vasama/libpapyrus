@@ -182,7 +182,8 @@ HashTable_Clear(struct HashTable* table, uintptr_t elemSize)
 	static inline void UNUSED name ## _Clear(struct HashTable* table) \
 	{ \
 		HashTable_Clear(table, sizeof(struct name ## _Element)); \
-	}
+	} \
+	EXPECT_SEMICOLON
 
 #define HashTable_DEFINE_SET(name, type, fnhash, fncmp) \
 	static inline void UNUSED name ## _Destroy(struct HashTable* table, \
@@ -230,4 +231,5 @@ HashTable_Clear(struct HashTable* table, uintptr_t elemSize)
 	static inline void UNUSED name ## _Clear(struct HashTable* table) \
 	{ \
 		HashTable_Clear(table, sizeof(type)); \
-	}
+	} \
+	EXPECT_SEMICOLON

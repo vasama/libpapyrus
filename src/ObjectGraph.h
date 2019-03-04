@@ -15,6 +15,8 @@ must be synchronized with the cache through the root object. */
 
 #include "Papyrus/Allocator.h"
 
+#include "Macros.h"
+
 #include <stdint.h>
 
 #ifndef NDEBUG
@@ -81,8 +83,7 @@ ObjectGraph_CacheAllocate(void* rootObject,
 	Papyrus_ObjectGraph_Allocate(void* rootObject,
 		uintptr_t size, struct ObjectGraph_Cache* cache);
 
-	// round up to align
-	size = size + 7 & -8;
+	size = ALIGN(size, 8);
 
 	char* cur = cache->cur;
 	char* new = cur + size;

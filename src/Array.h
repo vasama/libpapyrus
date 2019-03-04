@@ -204,7 +204,8 @@ versions of the generic functions. */
 	{ \
 		Array_Resize(array, \
 			(uintptr_t)size * sizeof(type), allocator); \
-	}
+	} \
+	EXPECT_SEMICOLON
 
 #define Array_DEFINE_STACK(name, type) \
 	Array_DEFINE_(name, type) \
@@ -252,7 +253,8 @@ versions of the generic functions. */
 		if (out != NULL) \
 			memcpy(out, data, (uintptr_t)size * sizeof(type)); \
 		array->cur = (char*)data; \
-	}
+	} \
+	EXPECT_SEMICOLON
 
 #define Array_DEFINE_(name, type) \
 	static inline UNUSED intptr_t name ## _Size(const struct Array* array) \

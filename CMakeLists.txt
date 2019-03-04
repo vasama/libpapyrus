@@ -2,6 +2,15 @@ cmake_minimum_required(VERSION 3.1)
 
 project(libpapyrus)
 
+function(set_c_standard target std)
+	if (MSVC)
+		target_compile_options(${target} PRIVATE -Xclang "-std=c${std}")
+	else()
+		target_compile_features(${target} PRIVATE "c_std_${std}")
+		set_property(TARGET ${target} PROPERTY C_EXTENSIONS OFF)
+	endif()
+endfunction(set_c_standard)
+
 function(enable_warnings target)
 	if (MSVC)
 		target_compile_options(${target} PRIVATE /W4 /WX)
@@ -9,16 +18,16 @@ function(enable_warnings target)
 		target_compile_options(${target} PRIVATE -Wall -Wextra -Werror)
 	endif()
 
-	target_compile_options(${target} PRIVATE
-		-Wpedantic
-		-Wno-extra-semi
-		-Wno-microsoft-enum-value
-		-Wno-gnu-zero-variadic-macro-arguments
-	)
+	target_compile_options(${target} PRIVATE -Wpedantic)
+
+	if(NOT ${CMAKE_C_COMPILER_ID} STREQUAL GNU)
+		target_compile_options(${target} PRIVATE
+			-Wno-gnu-zero-variadic-macro-arguments
+		)
+	endif()
 endfunction(enable_warnings)
 
 if(MSVC)
-	SET(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Xclang -std=c11")
 	add_definitions(-D_CRT_SECURE_NO_WARNINGS)
 endif()
 
@@ -41,8 +50,7 @@ add_library(libpapyrus
 	src/ulex/ulex.c
 )
 target_include_directories(libpapyrus PUBLIC include)
-set_property(TARGET libpapyrus PROPERTY C_STANDARD 11)
-set_property(TARGET libpapyrus PROPERTY C_EXTENSIONS OFF)
+set_c_standard(libpapyrus 11)
 enable_warnings(libpapyrus)
 
 add_subdirectory(test)
