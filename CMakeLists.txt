@@ -12,13 +12,7 @@ function(set_c_standard target std)
 endfunction(set_c_standard)
 
 function(enable_warnings target)
-	if (MSVC)
-		target_compile_options(${target} PRIVATE /W4 /WX)
-	else()
-		target_compile_options(${target} PRIVATE -Wall -Wextra -Werror)
-	endif()
-
-	target_compile_options(${target} PRIVATE -Wpedantic)
+	target_compile_options(${target} PRIVATE -Werror=all -Werror=extra -Wpedantic)
 
 	if(NOT ${CMAKE_C_COMPILER_ID} STREQUAL GNU)
 		target_compile_options(${target} PRIVATE
