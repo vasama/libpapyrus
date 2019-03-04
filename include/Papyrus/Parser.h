@@ -27,3 +27,6 @@ struct Papyrus_ParserOptions
 struct Papyrus_SyntaxTree*
 Papyrus_Parse(struct Papyrus_String source,
 	const struct Papyrus_ParserOptions* options);
+
+void
+Papyrus_SyntaxTree_Delete(struct Papyrus_SyntaxTree* tree);

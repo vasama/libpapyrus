@@ -2123,3 +2123,9 @@ Papyrus_Parse(struct Papyrus_String source,
 	
 	return tree;
 }
+
+void
+Papyrus_SyntaxTree_Delete(struct Papyrus_SyntaxTree* tree)
+{
+	ObjectGraph_Delete(tree);
+}
