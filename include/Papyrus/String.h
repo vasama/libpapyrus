@@ -2,6 +2,7 @@
 
 #include <stdint.h>
 #include <string.h>
+#include <limits.h>
 
 struct Papyrus_String
 {
@@ -18,8 +19,18 @@ struct Papyrus_String
 static inline int32_t
 Papyrus_String_Compare(struct Papyrus_String a, struct Papyrus_String b)
 {
-	intptr_t size = a.size < b.size ? a.size : b.size;
-	return strncmp(a.data, b.data, size);
+	intptr_t min = a.size < b.size ? a.size : b.size;
+	int32_t cmp = memcmp(a.data, b.data, min);
+
+	if (cmp == 0)
+	{
+		intptr_t diff = a.size - b.size;
+		if (diff > INT_MAX) return INT_MAX;
+		if (diff < INT_MIN) return INT_MIN;
+		return (int32_t)diff;
+	}
+
+	return cmp;
 }
 
 int32_t
