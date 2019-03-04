@@ -91,14 +91,18 @@ size: size of the array, in elements. */
 	for (auto xvar = xf(pf((a), pfc));;)
 #else
 #define FOREACH_(xvar, ivar, a, pf, pfc, cf, cfc, xf) \
-	for (intptr_t FOREACH_i = 0, FOREACH_c, \
-		FOREACH_x = 1, UNUSED ivar; FOREACH_x;) \
+	PRAGMA_DIAG_CLANG(push) PRAGMA_DIAG_CLANG(ignored "-Wshadow") \
+	for (intptr_t FOREACH_i = 0, FOREACH_c, FOREACH_x = 1, \
+	PRAGMA_DIAG_CLANG(pop) \
+		UNUSED ivar; FOREACH_x;) \
+	PRAGMA_DIAG_CLANG(push) PRAGMA_DIAG_CLANG(ignored "-Wshadow") \
 	for (__typeof__(a) UNUSED FOREACH_a = (a); \
 		FOREACH_c = (cf(FOREACH_a, cfc)), FOREACH_x;) \
 	for (__typeof__(*(pf(FOREACH_a, pfc)))* \
 		FOREACH_p = pf(FOREACH_a, pfc); FOREACH_x; FOREACH_x = 0) \
-	for (__typeof__(xf(FOREACH_p)) xvar; FOREACH_i < FOREACH_c && (xvar \
-		= (xf((FOREACH_p + FOREACH_i))), ivar = FOREACH_i, 1); ++FOREACH_i)
+	PRAGMA_DIAG_CLANG(pop) \
+	for (__typeof__(xf(FOREACH_p)) xvar; FOREACH_i < FOREACH_c && ((xvar \
+		= xf((FOREACH_p + FOREACH_i))), (ivar = FOREACH_i), 1); ++FOREACH_i)
 #endif
 
 #define FOREACHP_xf(x) x

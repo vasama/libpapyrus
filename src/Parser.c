@@ -869,8 +869,9 @@ ParseSymbol(Ctx* ctx)
 static struct Papyrus_Syntax_Type*
 ParseType(Ctx* ctx)
 {
-	static const struct Papyrus_String ErrorString =
+	static const struct Papyrus_String ErrorTypeString =
 		Papyrus_String_INIT("<error-type>");
+
 	static const struct Papyrus_Syntax_Symbol ErrorSymbol = {
 		.syntax = {
 			.kind = Papyrus_Syntax_Type,
@@ -878,9 +879,10 @@ ParseType(Ctx* ctx)
 			.flags = Papyrus_SyntaxFlags_Error,
 			.eflags = 0,
 		},
-		.data = (struct Papyrus_String*)&ErrorString,
+		.data = (struct Papyrus_String*)&ErrorTypeString,
 		.size = 1,
 	};
+
 	static const struct Papyrus_Syntax_Type ErrorType = {
 		.syntax = {
 			.kind = Papyrus_Syntax_Type,
@@ -1130,11 +1132,11 @@ ParseExpr(Ctx* ctx, uint32_t prec)
 				{
 					do
 					{
-						struct Papyrus_Syntax* expr =
+						struct Papyrus_Syntax* arg =
 							ParseExpr(ctx, Prec_Default);
-						PropagateError(new, expr);
+						PropagateError(new, arg);
 
-						Synbuf_Append(&expr);
+						Synbuf_Append(&arg);
 					} while (TryConsume(Tok_Comma));
 				}
 				ConsumeOrSetError(Tok_RParen, new);
@@ -1956,16 +1958,16 @@ ParseDeclScope(Ctx* ctx, uint32_t mask, uint32_t close)
 				{
 					CHECK(Import, "import directive");
 
-					struct Papyrus_Syntax_Import* new = CreateSyntax(Import);
-					new->syntax.offset = PeekOffset(0);
+					struct Papyrus_Syntax_Import* imp = CreateSyntax(Import);
+					imp->syntax.offset = PeekOffset(0);
 					Consume(1);
 
-					new->symbol = ParseSymbol(ctx);
-					PropagateError(new, new->symbol);
+					imp->symbol = ParseSymbol(ctx);
+					PropagateError(imp, imp->symbol);
 
-					ConsumeLineAndSetError(new);
+					ConsumeLineAndSetError(imp);
 
-					decl = &new->syntax;
+					decl = &imp->syntax;
 				}
 				break;
 

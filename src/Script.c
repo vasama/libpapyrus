@@ -748,10 +748,10 @@ BuildStmt_AssignStmt(BCtx* ctx, SYNTAX(AssignStmt)* syntax)
 	{
 	case Papyrus_Syntax_NameExpr:
 		{
-			SYNTAX(Symbol)* syntax = ((SYNTAX(NameExpr)*)dstSyntax)->symbol;
-			if (syntax->size == 1)
+			SYNTAX(Symbol)* exprSyntax = ((SYNTAX(NameExpr)*)dstSyntax)->symbol;
+			if (exprSyntax->size == 1)
 			{
-				intptr_t localIndex = GetLocal(ctx, syntax->data[0]);
+				intptr_t localIndex = GetLocal(ctx, exprSyntax->data[0]);
 
 				if (localIndex < 0)
 					goto global_symbol;
@@ -762,7 +762,7 @@ BuildStmt_AssignStmt(BCtx* ctx, SYNTAX(AssignStmt)* syntax)
 			else
 			{
 			global_symbol:;
-				struct Papyrus_Symbol* symbol = ResolveSymbol(ctx, syntax);
+				struct Papyrus_Symbol* symbol = ResolveSymbol(ctx, exprSyntax);
 				expr->kind = Papyrus_Expr_Assign;
 				expr->assign.object = NULL;
 				expr->assign.symbol = symbol;
@@ -772,20 +772,20 @@ BuildStmt_AssignStmt(BCtx* ctx, SYNTAX(AssignStmt)* syntax)
 
 	case Papyrus_Syntax_AccessExpr:
 		{
-			SYNTAX(AccessExpr)* syntax = (SYNTAX(AccessExpr)*)dstSyntax;
+			SYNTAX(AccessExpr)* exprSyntax = (SYNTAX(AccessExpr)*)dstSyntax;
 			expr->kind = Papyrus_Expr_Assign;
-			expr->assign.object = BuildExpr(ctx, syntax->expr);
-			expr->assign.name = CreatePascalString(ctx, syntax->name);
+			expr->assign.object = BuildExpr(ctx, exprSyntax->expr);
+			expr->assign.name = CreatePascalString(ctx, exprSyntax->name);
 			expr->assign.symbol = NULL;
 		}
 		break;
 
 	case Papyrus_Syntax_BinaryExpr | Papyrus_Syntax_BinaryExpr_Index << 8:
 		{
-			SYNTAX(BinaryExpr)* syntax = (SYNTAX(BinaryExpr)*)dstSyntax;
+			SYNTAX(BinaryExpr)* exprSyntax = (SYNTAX(BinaryExpr)*)dstSyntax;
 			expr->kind = Papyrus_Expr_Assign;
-			expr->assign.array = BuildExpr(ctx, syntax->left);
-			expr->assign.subscript = BuildExpr(ctx, syntax->right);
+			expr->assign.array = BuildExpr(ctx, exprSyntax->left);
+			expr->assign.subscript = BuildExpr(ctx, exprSyntax->right);
 		}
 		break;
 
@@ -1722,8 +1722,6 @@ AnalyzeExpr_Assign(ACtx* ctx, struct Papyrus_Expr* expr)
 
 		switch (linkSymbol->kind)
 		{
-			struct Papyrus_Type* type;
-
 		case Papyrus_Symbol_Variable:
 			ICEA(ctx, symbol->kind != Papyrus_Symbol_Extern);
 			expr->ekind = Papyrus_Expr_WriteField;

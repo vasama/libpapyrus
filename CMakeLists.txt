@@ -12,7 +12,12 @@ function(set_c_standard target std)
 endfunction(set_c_standard)
 
 function(enable_warnings target)
-	target_compile_options(${target} PRIVATE -Werror=all -Werror=extra -Wpedantic)
+	target_compile_options(${target} PRIVATE
+		-Werror=all
+		-Werror=extra
+		-Wpedantic
+		-Wshadow
+	)
 
 	if(NOT ${CMAKE_C_COMPILER_ID} STREQUAL GNU)
 		target_compile_options(${target} PRIVATE

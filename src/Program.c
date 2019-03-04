@@ -86,12 +86,14 @@ Papyrus_Program_AddScript(struct Papyrus_Program* program,
 {
 	struct ScriptInternal* script = (struct ScriptInternal*)publicScript;
 
-	struct Papyrus_String name = script->public.symbol.name;
-	struct LinkSymbol* linkSymbol = GetLinkSymbol(program, name);
+	{
+		struct Papyrus_String name = script->public.symbol.name;
+		struct LinkSymbol* linkSymbol = GetLinkSymbol(program, name);
 
-	// insert the script into the list of scripts in the link symbol
-	List_InsertAfter(&linkSymbol->scripts,
-		&GetSymbol(&publicScript->symbol)->list);
+		// insert the script into the list of scripts in the link symbol
+		List_InsertAfter(&linkSymbol->scripts,
+			&GetSymbol(&publicScript->symbol)->list);
+	}
 
 	// for each symbol exported by the script
 	FOREACHV_S(sym, sym_i, &script->public.exports)
@@ -111,9 +113,9 @@ Papyrus_Program_AddScript(struct Papyrus_Program* program,
 			struct Papyrus_Extern* externSymbol = 
 				(struct Papyrus_Extern*)x->symbol;
 
-			struct Papyrus_Script* script = symbol->script;
-			Papyrus_Script_SetExtern(script, externSymbol, symbol);
-			Papyrus_Script_Invalidate(script);
+			struct Papyrus_Script* userScript = symbol->script;
+			Papyrus_Script_SetExtern(userScript, externSymbol, symbol);
+			Papyrus_Script_Invalidate(userScript);
 		}
 	}
 
