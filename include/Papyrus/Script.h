@@ -260,11 +260,14 @@ struct Papyrus_Stmt
 	uint32_t source;
 };
 
+enum
+{
+	Papyrus_FunctionFlags_Global = 0x1,
+};
+
 struct Papyrus_Function
 {
 	struct Papyrus_Symbol symbol;
-
-	bool global;
 
 	struct {
 		struct Papyrus_Type* returnType;

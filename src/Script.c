@@ -989,7 +989,6 @@ CreateFunction(BCtx* ctx, struct Papyrus_String name)
 	function->public.symbol.kind = Papyrus_Symbol_Function;
 	function->public.symbol.flags = 0;
 	function->public.symbol.name = CommitString(ctx, name);
-	function->syntax = NULL;
 
 	FunctionArray_Append(&ctx->functions, &function,
 		Arena_CreateAllocator(&ctx->common.arena));
@@ -1004,8 +1003,6 @@ CreateVariable(BCtx* ctx, struct Papyrus_String name)
 	variable->public.symbol.kind = Papyrus_Symbol_Variable;
 	variable->public.symbol.flags = 0;
 	variable->public.symbol.name = CommitString(ctx, name);
-	variable->typeSyntax = NULL;
-	variable->initSyntax = NULL;
 
 	VariableArray_Append(&ctx->variables, &variable,
 		Arena_CreateAllocator(&ctx->common.arena));
@@ -1020,6 +1017,9 @@ BuildFunction(BCtx* ctx, SYNTAX(Function)* syntax)
 	struct Function* function = CreateFunction(ctx, syntax->name);
 	function->syntax = syntax;
 	function->public.symbol.flags |= Papyrus_SymbolFlags_Export;
+
+	if (syntax->syntax.eflags & Papyrus_Syntax_DeclFlags_Global)
+		function->public.symbol.eflags |= Papyrus_FunctionFlags_Global;
 
 	return &function->public.symbol;
 }
@@ -1089,9 +1089,9 @@ BuildProperty(BCtx* ctx, SYNTAX(Property)* syntax)
 			check_accessor_name:
 				if ((c = name.data[1]) != 'E' && c != 'e')
 					goto accessor_name_error;
-
 				if ((c = name.data[2]) != 'T' && c != 't')
 					goto accessor_name_error;
+				break;
 
 			default:
 			accessor_name_error:
@@ -1917,9 +1917,9 @@ AnalyzeExpr_Call(ACtx* ctx, struct Papyrus_Expr* expr)
 	{
 		struct Papyrus_Function* function = (struct Papyrus_Function*)symbol;
 
-		if (function->global)
+		if (function->symbol.eflags & Papyrus_FunctionFlags_Global)
 		{
-			if (object == NULL)
+			if (object != NULL)
 			{
 				ReportError(ctx, expr->source,
 					"call to global function with an object argument");
@@ -1927,7 +1927,7 @@ AnalyzeExpr_Call(ACtx* ctx, struct Papyrus_Expr* expr)
 		}
 		else
 		{
-			if (object != NULL)
+			if (object == NULL)
 			{
 				ReportError(ctx, expr->source,
 					"call to method without an object argument");
