@@ -36,8 +36,13 @@ add_library(libpapyrus
 	src/ObjectGraph.c
 	src/String.c
 
+	src/Asm.c
+	src/EliminateSSA.c
+	src/Emit.c
 	src/Eval.c
+	src/DumpAsm.c
 	src/DumpAST.c
+	src/IR.c
 	src/Parser.c
 	src/Program.c
 	src/Script.c
