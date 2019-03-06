@@ -1,3 +1,5 @@
+[![Build Status](https://travis-ci.com/vasama/libpapyrus.svg?branch=master)](https://travis-ci.com/vasama/libpapyrus)
+
 # libpapyrus
 libpapyrus is an analysis and compilation library for the Papyrus language used in Bethesda Game Studios' The Elder Scrolls V: Skyrim and Fallout 4 titles. The library aims to provide a complete optimizing compiler pipeline for the language.
 
