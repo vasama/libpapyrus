@@ -64,6 +64,9 @@
 		memcpy(SWAP_b, SWAP_t, SWAP_s); \
 	} while (0)
 
+// strips const: TYPEOF(const int) -> int
+#define TYPEOF(x) __typeof__(__extension__({ (__typeof__(x))(x); }))
+
 /* FOREACH(element-var, index-var, ...)
 A convenience macro for easy iteration over array elements.
 
@@ -101,7 +104,7 @@ size: size of the array, in elements. */
 	for (__typeof__(*(pf(FOREACH_a, pfc)))* \
 		FOREACH_p = pf(FOREACH_a, pfc); FOREACH_x; FOREACH_x = 0) \
 	PRAGMA_DIAG_CLANG(pop) \
-	for (__typeof__(xf(FOREACH_p)) xvar; FOREACH_i < FOREACH_c && ((xvar \
+	for (TYPEOF(xf(FOREACH_p)) xvar; FOREACH_i < FOREACH_c && ((xvar \
 		= xf((FOREACH_p + FOREACH_i))), (ivar = FOREACH_i), 1); ++FOREACH_i)
 #endif
 
