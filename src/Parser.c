@@ -1035,6 +1035,12 @@ ParseExpr(Ctx* ctx, uint32_t prec)
 				expr->offset = PeekOffset(0);
 				Consume(1);
 				break;
+
+			case Key_Self:
+				expr = &CreateSyntax2(SelfExpr, Empty)->syntax;
+				expr->offset = PeekOffset(0);
+				Consume(1);
+				break;
 			
 				{
 					uint32_t ekind;

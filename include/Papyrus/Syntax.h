@@ -16,6 +16,7 @@ enum Papyrus_Syntax_Kind
 
 	Papyrus_Syntax_NameExpr,
 	Papyrus_Syntax_ConstExpr,
+	Papyrus_Syntax_SelfExpr,
 	Papyrus_Syntax_NewExpr,
 
 	Papyrus_Syntax_UnaryExpr,
