@@ -27,31 +27,6 @@ if(MSVC)
 	add_definitions(-D_CRT_SECURE_NO_WARNINGS)
 endif()
 
-add_library(libpapyrus
-	src/Arena.c
-	src/Array.c
-	src/Except.c
-	src/FNV.c
-	src/HashTable.c
-	src/ObjectGraph.c
-	src/String.c
-
-	src/Asm.c
-	src/EliminateSSA.c
-	src/Emit.c
-	src/Eval.c
-	src/DumpAsm.c
-	src/DumpAST.c
-	src/IR.c
-	src/Parser.c
-	src/Program.c
-	src/Script.c
-	src/SourceMap.c
-
-	src/ulex/ulex.c
-)
-target_include_directories(libpapyrus PUBLIC include)
-set_c_standard(libpapyrus 11)
-enable_warnings(libpapyrus)
-
+add_subdirectory(common)
+add_subdirectory(libpapyrus)
 add_subdirectory(test)
