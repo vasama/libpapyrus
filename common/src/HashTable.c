@@ -143,58 +143,6 @@ GetSlot(void* data, uintptr_t elemSize, intptr_t index)
 	};
 }
 
-void
-Papyrus_HashTable_Destroy(struct HashTable* table,
-	uintptr_t elemSize, struct Papyrus_Allocator allocator)
-{
-	intptr_t capa = table->capa;
-	allocator.func(allocator.context, table->data, capa + capa * elemSize, 0);
-}
-
-/* Returns a pointer to the element with the given key, or NULL if not it is
-not present.
-
-Operation: Use the hash of the input key mod table size to find the hash chain.
-If the hash chain exists, loop through it and compare keys in each element to
-the input key. */
-void*
-Papyrus_HashTable_Find(struct HashTable* table,
-	const void* key, uintptr_t elemSize, uintptr_t hash,
-	bool(*fnCompare)(const void*, const void*))
-{
-	void* data = table->data;
-
-	uintptr_t mask, shift;
-	GetMaskAndShift(table->capa, &mask, &shift);
-
-	intptr_t index = HashToIndex(hash, shift);
-	struct Slot slot = GetSlot(data, elemSize, index);
-
-	uint8_t ctrl = *slot.ctrl;
-	if ((ctrl & Ctrl_Flag) == 0)
-	{
-		return NULL;
-	}
-
-	ctrl = ctrl & Ctrl_Mask;
-	while (true)
-	{
-		if (fnCompare(slot.elem, key))
-		{
-			return slot.elem;
-		}
-
-		if (LIKELY(ctrl == Ctrl_Last))
-		{
-			return NULL;
-		}
-
-		index = Jump(index, ctrl, mask);
-		slot = GetSlot(data, elemSize, index);
-		ctrl = *slot.ctrl;
-	}
-}
-
 /* A new table is created and all elements from the existing table are inserted
 one by one. The existing table is destroyed and replaced by the new table. */
 static void
@@ -264,6 +212,74 @@ Rehash(struct HashTable* table, intptr_t newCapacity,
 	}
 
 	*table = newTable;
+}
+
+void
+Papyrus_HashTable_Destroy(struct HashTable* table,
+	uintptr_t elemSize, struct Papyrus_Allocator allocator)
+{
+	intptr_t capa = table->capa;
+	allocator.func(allocator.context, table->data, capa + capa * elemSize, 0);
+}
+
+void
+Papyrus_HashTable_Reserve(struct HashTable* table, intptr_t minCapacity,
+	uintptr_t elemSize, uintptr_t(*fnHash)(const void*),
+	bool(*fnCompare)(const void*, const void*),
+	struct Papyrus_Allocator allocator)
+{
+	uintptr_t highbit = 1 << bsr64((uintptr_t)minCapacity);
+
+	if (highbit != (uintptr_t)minCapacity)
+		minCapacity = (intptr_t)(highbit << 1);
+
+	minCapacity = MAX(minCapacity, BlockSize);
+
+	Rehash(table, minCapacity, elemSize, fnHash, fnCompare, allocator);
+}
+
+/* Returns a pointer to the element with the given key, or NULL if not it is
+not present.
+
+Operation: Use the hash of the input key mod table size to find the hash chain.
+If the hash chain exists, loop through it and compare keys in each element to
+the input key. */
+void*
+Papyrus_HashTable_Find(struct HashTable* table,
+	const void* key, uintptr_t elemSize, uintptr_t hash,
+	bool(*fnCompare)(const void*, const void*))
+{
+	void* data = table->data;
+
+	uintptr_t mask, shift;
+	GetMaskAndShift(table->capa, &mask, &shift);
+
+	intptr_t index = HashToIndex(hash, shift);
+	struct Slot slot = GetSlot(data, elemSize, index);
+
+	uint8_t ctrl = *slot.ctrl;
+	if ((ctrl & Ctrl_Flag) == 0)
+	{
+		return NULL;
+	}
+
+	ctrl = ctrl & Ctrl_Mask;
+	while (true)
+	{
+		if (fnCompare(slot.elem, key))
+		{
+			return slot.elem;
+		}
+
+		if (LIKELY(ctrl == Ctrl_Last))
+		{
+			return NULL;
+		}
+
+		index = Jump(index, ctrl, mask);
+		slot = GetSlot(data, elemSize, index);
+		ctrl = *slot.ctrl;
+	}
 }
 
 /* Attempts to find an empty slot that may be connected to the slot at the

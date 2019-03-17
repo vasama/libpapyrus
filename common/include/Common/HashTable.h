@@ -59,14 +59,22 @@ HashTable_Capacity(const struct HashTable* table)
 }
 
 static inline void
-HashTable_Reserve(struct HashTable* table, uintptr_t elemSize,
-	intptr_t minCapacity, struct Papyrus_Allocator allocator)
+HashTable_Reserve(struct HashTable* table, intptr_t minCapacity,
+	uintptr_t elemSize, uintptr_t(*fnHash)(const void*),
+	bool(*fnCompare)(const void*, const void*),
+	struct Papyrus_Allocator allocator)
 {
 	void
-	Papyrus_HashTable_Reserve(struct HashTable* table, uintptr_t elemSize,
-		intptr_t minCapacity, struct Papyrus_Allocator allocator);
+	Papyrus_HashTable_Reserve(struct HashTable* table, intptr_t minCapacity,
+		uintptr_t elemSize, uintptr_t(*fnHash)(const void*),
+		bool(*fnCompare)(const void*, const void*),
+		struct Papyrus_Allocator allocator);
 
-	Papyrus_HashTable_Reserve(table, elemSize, minCapacity, allocator);
+	if (table->capa < minCapacity)
+	{
+		Papyrus_HashTable_Reserve(table,
+			minCapacity, elemSize, fnHash, fnCompare, allocator);
+	}
 }
 
 static inline void*
@@ -140,8 +148,10 @@ HashTable_Clear(struct HashTable* table, uintptr_t elemSize)
 	static inline void UNUSED name ## _Reserve(struct HashTable* table, \
 		intptr_t minCapacity, struct Papyrus_Allocator allocator) \
 	{ \
-		HashTable_Reserve(table, \
-			sizeof(struct name ## _Element), minCapacity, allocator); \
+		HashTable_Reserve(table, minCapacity, \
+			sizeof(struct name ## _Element), \
+			(uintptr_t(*)(const void*))&(fnhash), \
+			(bool(*)(const void*, const void*))&(fncmp), allocator); \
 	} \
 	static inline valtype* UNUSED name ## _Find( \
 		struct HashTable* table, keytype const* key) \
@@ -194,8 +204,9 @@ HashTable_Clear(struct HashTable* table, uintptr_t elemSize)
 	static inline void UNUSED name ## _Reserve(struct HashTable* table, \
 		intptr_t minCapacity, struct Papyrus_Allocator allocator) \
 	{ \
-		HashTable_Reserve(table, \
-			sizeof(type), minCapacity, allocator); \
+		HashTable_Reserve(table, minCapacity, sizeof(type), \
+			(uintptr_t(*)(const void*))&(fnhash), \
+			(bool(*)(const void*, const void*))&(fncmp), allocator); \
 	} \
 	static inline type* UNUSED name ## _Find( \
 		struct HashTable* table, type const* key) \
