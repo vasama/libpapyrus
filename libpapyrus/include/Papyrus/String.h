@@ -15,3 +15,11 @@ struct Papyrus_String
 
 #define Papyrus_String_CREATE(strlit) \
 	((struct Papyrus_String) Papyrus_String_INIT(strlit))
+
+static inline struct Papyrus_String
+Papyrus_String_FromCString(const char* string)
+{
+	return (struct Papyrus_String) {
+		string, strlen(string)
+	};
+}
