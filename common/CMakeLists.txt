@@ -1,5 +1,6 @@
 add_library(common
 	src/Arena.c
+	src/Args.c
 	src/Array.c
 	src/Except.c
 	src/FNV.c
