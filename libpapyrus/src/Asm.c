@@ -37,6 +37,8 @@ typedef struct {
 	// Papyrus_String -> uint32_t
 	struct HashTable stringTable;
 
+	uint32_t selfString;
+
 	struct {
 		// uint32_t stringIndex
 		struct Array varStrings;
@@ -132,6 +134,18 @@ GetTypeString(Ctx* ctx, struct Papyrus_Type* type)
 	return AllocateString(ctx, type->symbol->name);
 }
 
+static uint32_t
+GetSelfString(Ctx* ctx)
+{
+	uint32_t index = ctx->selfString;
+	if (index == -1u)
+	{
+		index = AllocateString(ctx, Papyrus_String_CREATE("self"));
+		ctx->selfString = index;
+	}
+	return index;
+}
+
 
 static struct Asm_Arg
 DstArg(Ctx* ctx, struct IR_Inst* ir)
@@ -186,6 +200,12 @@ ValArg(Ctx* ctx, struct IR_Val ir)
 			return (struct Asm_Arg) {
 				.type = Asm_Arg_Symbol,
 				.index = AllocateString(ctx, Papyrus_String_CREATE("::none")),
+			};
+
+		case IR_Val_Imm_Self:
+			return (struct Asm_Arg) {
+				.type = Asm_Arg_Index,
+				.index = GetSelfString(ctx),
 			};
 
 		case IR_Val_Imm_Int:
@@ -265,10 +285,15 @@ GenerateInstruction(Ctx* ctx, struct IR_Inst* irInst,
 		break;
 
 	case IR_Inst_Load:
-		assert(false);
+		assert(argCount == 1);
+		inst = CreateInstruction(ctx, Asm_Assign, 2);
+		inst->args[0] = DstArg(ctx, irInst);
+		inst->args[1] = SymArg(ctx, GetSym(args[0]));
+		break;
+		
 
 	case IR_Inst_Store:
-		assert(argCount == 1);
+		assert(argCount == 2);
 		inst = CreateInstruction(ctx, Asm_Assign, 2);
 		inst->args[0] = SymArg(ctx, GetSym(args[0]));
 		inst->args[1] = ValArg(ctx, args[1]);
@@ -290,31 +315,56 @@ GenerateInstruction(Ctx* ctx, struct IR_Inst* irInst,
 		inst->args[2] = ValArg(ctx, args[2]);
 		break;
 
-	case IR_Inst_Not:
-		assert(argCount == 1);
-		inst = CreateInstruction(ctx, Asm_Not, 1);
-		inst->args[0] = DstArg(ctx, irInst);
-		inst->args[1] = ValArg(ctx, args[0]);
+		{
+			uint32_t opcode;
+
+#ifndef __INTELLISENSE__
+#define UNARY(x) \
+	case IR_Inst_ ## x: \
+		opcode = Asm_ ## x; \
+		goto unary
+
+		UNARY(INeg);
+		UNARY(FNeg);
+		UNARY(Not);
+#undef UNARY
+#endif
+		unary:
+			assert(argCount == 1);
+			inst = CreateInstruction(ctx, opcode, 2);
+			inst->args[0] = DstArg(ctx, irInst);
+			inst->args[1] = ValArg(ctx, args[0]);
+		}
 		break;
 
 		{
 			uint32_t opcode;
 
 #ifndef __INTELLISENSE__
-#define BINOP(x) \
+#define BINARY(x) \
 	case IR_Inst_ ## x: \
 		opcode = Asm_ ## x; \
-		goto binop
+		goto binary
+			
+			BINARY(IAdd);
+			BINARY(FAdd);
+			BINARY(ISub);
+			BINARY(FSub);
+			BINARY(IMul);
+			BINARY(FMul);
+			BINARY(IDiv);
+			BINARY(FDiv);
+			BINARY(IMod);
 
-			BINOP(CmpEq);
-			BINOP(CmpLt);
-			BINOP(CmpGt);
-			BINOP(CmpLe);
-			BINOP(CmpGe);
-#undef BINOP
+			BINARY(CmpEq);
+			BINARY(CmpLt);
+			BINARY(CmpGt);
+			BINARY(CmpLe);
+			BINARY(CmpGe);
+#undef BINARY
 #endif
 
-		binop:
+		binary:
 			assert(argCount == 2);
 			inst = CreateInstruction(ctx, opcode, 3);
 			inst->args[0] = DstArg(ctx, irInst);
@@ -387,7 +437,7 @@ GenerateInstruction(Ctx* ctx, struct IR_Inst* irInst,
 
 	case IR_Inst_CallVirt:
 			assert(argCount >= 2);
-			inst = CreateInstruction(ctx, Asm_CallStatic, argCount + 1);
+			inst = CreateInstruction(ctx, Asm_CallMethod, argCount + 1);
 			inst->args[0] = SymArg(ctx, GetSym(args[1]));
 			inst->args[1] = ValArg(ctx, args[0]);
 			inst->args[2] = DstArg(ctx, irInst);
@@ -707,7 +757,9 @@ Papyrus_GenerateAsm(struct Papyrus_Script* const* scripts_,
 
 	Array_Init(&ctx.strings);
 	HashTable_Init(&ctx.stringTable);
+	ctx.selfString = -1;
 	Array_Init(&ctx.func.varStrings);
+
 
 	// string at index 0 is empty
 	AllocateString(&ctx, Papyrus_String_CREATE(""));

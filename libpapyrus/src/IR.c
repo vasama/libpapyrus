@@ -433,8 +433,71 @@ TryJump(Ctx* ctx, struct IR_Block* br)
 }
 
 
+static inline struct IR_Val
+SelfValue(void)
+{
+	return (struct IR_Val) {
+		.type = IR_Val_Imm,
+		.etype = IR_Val_Imm_Self,
+		.flags = 0,
+	};
+}
+
+
 static struct IR_Reg*
 GenerateExpr(Ctx* ctx, struct Papyrus_Expr* expr);
+
+static struct IR_Reg*
+GenerateExpr_Symbol(Ctx* ctx, struct Papyrus_Expr* expr)
+{
+	struct IR_Inst* inst;
+	switch (expr->ekind)
+	{
+		struct Papyrus_Variable* variable;
+
+	case Papyrus_Expr_ReadField:
+		{
+			variable = (struct Papyrus_Variable*)expr->symbol;
+
+		read_field:
+			inst = Emit(ctx, IR_Inst_Load, &expr->type);
+			*SetArgs(ctx, inst, 1) = SymVal(&variable->symbol);
+		}
+		break;
+
+	case Papyrus_Expr_ReadProperty:
+		{
+			struct Papyrus_Property* property =
+				(struct Papyrus_Property*)expr->symbol;
+
+			if (property->symbol.eflags & Papyrus_PropertyFlags_Auto)
+			{
+				variable = property->variable;
+				goto read_field;
+			}
+			else
+			{
+				inst = Emit(ctx, IR_Inst_Get, &expr->type);
+				struct IR_Val* args = SetArgs(ctx, inst, 2);
+				args[0] = SelfValue();
+				args[1] = SymVal(&property->symbol);
+			}
+		}
+		break;
+	}
+	return inst->reg;
+}
+
+static struct IR_Reg*
+GenerateExpr_Access(Ctx* ctx, struct Papyrus_Expr* expr)
+{
+	struct IR_Reg* obj = GenerateExpr(ctx, expr->access.expr);
+	struct IR_Inst* inst = Emit(ctx, IR_Inst_Get, &expr->type);
+	struct IR_Val* args = SetArgs(ctx, inst, 2);
+	args[0] = RegVal(obj);
+	args[1] = SymVal(expr->access.symbol);
+	return inst->reg;
+}
 
 static struct IR_Reg*
 GenerateExpr_Assign(Ctx* ctx, struct Papyrus_Expr* expr)
@@ -453,11 +516,16 @@ GenerateExpr_Assign(Ctx* ctx, struct Papyrus_Expr* expr)
 
 	case Papyrus_Expr_WriteProperty:
 		{
-			//TODO: null object (self)
-			struct IR_Reg* obj = GenerateExpr(ctx, expr->assign.object);
+			struct IR_Reg* obj;
+
+			struct Papyrus_Expr* objExpr = expr->assign.object;
+			if (objExpr != NULL)
+				obj = GenerateExpr(ctx, objExpr);
+
 			struct IR_Inst* inst = Emit(ctx, IR_Inst_Set, NULL);
 			struct IR_Val* args = SetArgs(ctx, inst, 3);
-			args[0] = RegVal(obj);
+
+			args[0] = objExpr != NULL ? RegVal(obj) : SelfValue();
 			args[1] = SymVal(expr->assign.symbol);
 			args[2] = RegVal(src);
 		}
@@ -481,10 +549,10 @@ GenerateExpr_WriteLocal(Ctx* ctx, struct Papyrus_Expr* expr)
 }
 
 static struct IR_Reg*
-GenerateExpr_ReadField(Ctx* ctx, struct Papyrus_Expr* expr)
+GenerateExpr_Self(Ctx* ctx, struct Papyrus_Expr* expr)
 {
-	struct IR_Inst* inst = Emit(ctx, IR_Inst_Load, &expr->type);
-	*SetArgs(ctx, inst, 1) = SymVal(expr->symbol);
+	struct IR_Inst* inst = Emit(ctx, IR_Inst_Mov, &expr->type);
+	*SetArgs(ctx, inst, 1) = SelfValue();
 	return inst->reg;
 }
 
@@ -547,31 +615,39 @@ GenerateExpr_Cast(Ctx* ctx, struct Papyrus_Expr* expr)
 static struct IR_Reg*
 GenerateExpr_Call(Ctx* ctx, struct Papyrus_Expr* expr)
 {
-	struct Papyrus_Expr* object = expr->call.object;
+	
 	struct Papyrus_Symbol* symbol = expr->call.symbol;
-
 	struct Papyrus_Function* func = (struct Papyrus_Function*)symbol;
 
 	struct IR_Inst* inst;
 	struct IR_Val* args;
 	intptr_t argIndex;
 
-	if (object != NULL)
-	{
-		struct IR_Reg* obj = GenerateExpr(ctx, object);
-		inst = Emit(ctx, IR_Inst_CallVirt, &func->signature.returnType);
-		args = SetArgs(ctx, inst, 2 + expr->call.args.size);
-		args[0] = RegVal(obj);
-		args[1] = SymVal(symbol);
-		argIndex = 2;
-
-	}
-	else
+	if (func->symbol.eflags & Papyrus_FunctionFlags_Global)
 	{
 		inst = Emit(ctx, IR_Inst_Call, &func->signature.returnType);
 		args = SetArgs(ctx, inst, 1 + expr->call.args.size);
 		args[0] = SymVal(symbol);
 		argIndex = 1;
+	}
+	else
+	{
+		struct IR_Reg* obj;
+
+		struct Papyrus_Expr* objExpr = expr->call.object;
+		if (objExpr != NULL)
+			obj = GenerateExpr(ctx, objExpr);
+
+		inst = Emit(ctx, IR_Inst_CallVirt, &func->signature.returnType);
+		args = SetArgs(ctx, inst, 2 + expr->call.args.size);
+
+		if (objExpr != NULL)
+			args[0] = RegVal(obj);
+		else
+			args[0] = SelfValue();
+
+		args[1] = SymVal(symbol);
+		argIndex = 2;
 	}
 
 	FOREACHV_S(arg, arg_i, &expr->call.args)
@@ -634,11 +710,14 @@ GenerateExpr(Ctx* ctx, struct Papyrus_Expr* expr)
 
 #define EXPR1(x, ...) EXPR2(x, x, ##__VA_ARGS__)
 
+		EXPR1(Symbol);
+		EXPR1(Access);
 		EXPR1(Assign);
 
 		EXPR1(ReadLocal);
 		EXPR1(WriteLocal);
-		EXPR1(ReadField);
+
+		EXPR1(Self);
 
 		EXPR2(Unary, Neg, IR_Inst_INeg);
 		EXPR2(Unary, Not, IR_Inst_Not);

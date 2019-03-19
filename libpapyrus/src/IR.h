@@ -74,6 +74,7 @@ enum
 enum
 {
 	IR_Val_Imm_None,
+	IR_Val_Imm_Self,
 	IR_Val_Imm_Int,
 	IR_Val_Imm_Bool,
 	IR_Val_Imm_Float,

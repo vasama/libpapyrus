@@ -116,6 +116,8 @@ enum
 	Papyrus_Expr_LitFloat,
 	Papyrus_Expr_LitString,
 
+	Papyrus_Expr_Self,
+
 	Papyrus_Expr_Neg,
 	Papyrus_Expr_Not,
 
@@ -293,15 +295,24 @@ struct Papyrus_Variable
 	struct Papyrus_Expr* expr;
 };
 
+enum
+{
+	Papyrus_PropertyFlags_Auto = 0x1,
+};
+
 struct Papyrus_Property
 {
 	struct Papyrus_Symbol symbol;
 
 	struct Papyrus_Type* type;
 
-	struct Papyrus_Variable* variable;
-	struct Papyrus_Function* get;
-	struct Papyrus_Function* set;
+	union {
+		struct {
+			struct Papyrus_Function* get;
+			struct Papyrus_Function* set;
+		};
+		struct Papyrus_Variable* variable;
+	};
 };
 
 enum

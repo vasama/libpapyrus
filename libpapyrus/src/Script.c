@@ -294,6 +294,7 @@ ResolveExtern(BCtx* ctx, SYNTAX(Symbol)* syntax)
 		CreateSymbol(ctx, struct Papyrus_Extern);
 	externSymbol->symbol.kind = Papyrus_Symbol_Extern;
 	externSymbol->symbol.flags = 0;
+	externSymbol->symbol.eflags = 0;
 	externSymbol->symbol.name = name;
 	externSymbol->link = NULL;
 
@@ -305,23 +306,30 @@ ResolveExtern(BCtx* ctx, SYNTAX(Symbol)* syntax)
 }
 
 static struct Papyrus_Symbol*
-ResolveSymbol(BCtx* ctx, SYNTAX(Symbol)* syntax)
+ResolveInternal(BCtx* ctx, struct Papyrus_String name)
 {
-	assert(syntax->size == 1);
-	struct Papyrus_String name = syntax->data[0];
-
 	struct Script* script = ctx->common.script;
 
 	if (Papyrus_String_ICompare(name, ctx->scriptName) == 0)
 		return &ctx->common.script->internal.public.symbol;
 
-	// check script symbols
 	struct Papyrus_Symbol** mapSymbol =
 		SymbolMap_Find(&script->symbolTable, &name);
 
-	if (mapSymbol != NULL)
-		return *mapSymbol;
+	return mapSymbol != NULL ? *mapSymbol : NULL;
+}
 
+static struct Papyrus_Symbol*
+ResolveSymbol(BCtx* ctx, SYNTAX(Symbol)* syntax)
+{
+	if (syntax->size == 1)
+	{
+		struct Papyrus_Symbol* internal =
+			ResolveInternal(ctx, *syntax->data);
+
+		if (internal != NULL)
+			return internal;
+	}
 	return ResolveExtern(ctx, syntax);
 }
 
@@ -451,6 +459,8 @@ static uintptr_t
 CommitArray_(BCtx* ctx, struct Array* array, void** out)
 {
 	uintptr_t size = Array_Size(array);
+	if (size == 0) return 0;
+
 	void* data = Allocate_(&ctx->common, size);
 	memcpy(data, Array_Data(array), size);
 	*out = data;
@@ -640,15 +650,25 @@ BuildExpr_AccessExpr(BCtx* ctx, SYNTAX(AccessExpr)* syntax)
 {
 	struct Papyrus_Expr* expr = Allocate(ctx, struct Papyrus_Expr);
 
-	struct Papyrus_Expr* object = BuildExpr(ctx, syntax->expr);
+	Syntax* objectSyntax = syntax->expr;
+	if (objectSyntax->kind == Papyrus_Syntax_SelfExpr)
+	{
+		expr->kind = Papyrus_Expr_Symbol;
+		expr->flags = 0;
+		expr->symbol = ResolveInternal(ctx, syntax->name);
+		assert(expr->symbol != NULL); // TODO: parent symbols
+	}
+	else
+	{
+		struct Papyrus_Expr* object = BuildExpr(ctx, objectSyntax);
 
-	expr->kind = Papyrus_Expr_Access;
-	expr->ekind = 0;
-	expr->flags = object->flags;
-	expr->type = IntrinsicType(Error);
-	expr->access.expr = object;
-	expr->access.name = CreatePascalString(ctx, syntax->name);
-	expr->access.symbol = NULL;
+		expr->kind = Papyrus_Expr_Access;
+		expr->flags = object->flags;
+		expr->access.expr = object;
+		expr->access.name = CreatePascalString(ctx, syntax->name);
+		expr->access.symbol = NULL;
+	}
+
 	return expr;
 }
 
@@ -672,11 +692,26 @@ BuildExpr_CallExpr(BCtx* ctx, SYNTAX(CallExpr)* syntax)
 	case Papyrus_Syntax_AccessExpr:
 		{
 			SYNTAX(AccessExpr)* exprSyntax = (SYNTAX(AccessExpr)*)funcSyntax;
-			expr->call.object = BuildExpr(ctx, exprSyntax->expr);
-			expr->call.name = CreatePascalString(ctx, exprSyntax->name);
-			expr->call.symbol = NULL;
+			
+			Syntax* objectSyntax = exprSyntax->expr;
+			if (objectSyntax->kind != Papyrus_Syntax_SelfExpr)
+			{
+				expr->call.object = NULL;
+				expr->call.name = NULL;
+				expr->call.symbol = ResolveInternal(ctx, exprSyntax->name);
+				assert(expr->call.symbol != NULL); // TODO: parent symbols
+			}
+			else
+			{
+				expr->call.object = BuildExpr(ctx, objectSyntax);
+				expr->call.name = CreatePascalString(ctx, exprSyntax->name);
+				expr->call.symbol = NULL;
+			}
 		}
 		break;
+
+	default:
+		assert(false);
 	}
 
 	intptr_t argCount = syntax->args.size;
@@ -703,6 +738,11 @@ BuildExpr(BCtx* ctx, Syntax* syntax)
 	struct Papyrus_Expr* expr;
 	switch (syntax->kind)
 	{
+	case Papyrus_Syntax_SelfExpr:
+		expr = Allocate(ctx, struct Papyrus_Expr);
+		expr->kind = Papyrus_Expr_Self;
+		break;
+
 #define EXPR(x) \
 	case Papyrus_Syntax_ ## x: \
 		expr = BuildExpr_ ## x(ctx, (SYNTAX(x)*)syntax); \
@@ -989,6 +1029,7 @@ CreateFunction(BCtx* ctx, struct Papyrus_String name)
 	struct Function* function = CreateSymbol(ctx, struct Function);
 	function->public.symbol.kind = Papyrus_Symbol_Function;
 	function->public.symbol.flags = 0;
+	function->public.symbol.eflags = 0;
 	function->public.symbol.name = CommitString(ctx, name);
 
 	FunctionArray_Append(&ctx->functions, &function,
@@ -1003,6 +1044,7 @@ CreateVariable(BCtx* ctx, struct Papyrus_String name)
 	struct Variable* variable = CreateSymbol(ctx, struct Variable);
 	variable->public.symbol.kind = Papyrus_Symbol_Variable;
 	variable->public.symbol.flags = 0;
+	variable->public.symbol.eflags = 0;
 	variable->public.symbol.name = CommitString(ctx, name);
 
 	VariableArray_Append(&ctx->variables, &variable,
@@ -1041,6 +1083,7 @@ BuildProperty(BCtx* ctx, SYNTAX(Property)* syntax)
 	struct Property* property = CreateSymbol(ctx, struct Property);
 	property->public.symbol.kind = Papyrus_Symbol_Property;
 	property->public.symbol.flags = Papyrus_SymbolFlags_Export;
+	property->public.symbol.eflags = 0;
 	property->public.symbol.name = syntax->name;
 	property->syntax = syntax;
 
@@ -1057,6 +1100,7 @@ BuildProperty(BCtx* ctx, SYNTAX(Property)* syntax)
 			Papyrus_String_CREATE("<property-backing-variable>"));
 
 		var->public.symbol.flags |= Papyrus_SymbolFlags_Hidden;
+		var->public.symbol.eflags |= Papyrus_PropertyFlags_Auto;
 		var->typeSyntax = syntax->type;
 		var->initSyntax = syntax->expr;
 	}
@@ -1411,6 +1455,7 @@ typedef struct {
 
 	struct Papyrus_Type* returnType;
 	struct Papyrus_Type** locals;
+	bool global;
 
 	struct {
 		struct Papyrus_Expr* expr;
@@ -1666,8 +1711,9 @@ AnalyzeExpr_Symbol(ACtx* ctx, struct Papyrus_Expr* expr)
 			expr->ekind = Papyrus_Expr_ReadField;
 			expr->flags &= ~Papyrus_ExprFlags_Error;
 			expr->type = variable->type;
+
+			goto check_global;
 		}
-		break;
 
 	case Papyrus_Symbol_Property:
 		{
@@ -1677,6 +1723,15 @@ AnalyzeExpr_Symbol(ACtx* ctx, struct Papyrus_Expr* expr)
 			expr->ekind = Papyrus_Expr_ReadProperty;
 			expr->flags &= ~Papyrus_ExprFlags_Error;
 			expr->type = property->type;
+
+			goto check_global;
+		}
+
+	check_global:
+		if (ctx->global)
+		{
+			ReportError(ctx, expr->source,
+				"access requires an object reference");
 		}
 		break;
 
@@ -1930,8 +1985,15 @@ AnalyzeExpr_Call(ACtx* ctx, struct Papyrus_Expr* expr)
 		{
 			if (object == NULL)
 			{
-				ReportError(ctx, expr->source,
-					"call to method without an object argument");
+				struct Papyrus_Script* script =
+					&ctx->common.script->internal.public;
+
+				struct Papyrus_Script* funcScript = function->symbol.script;
+				if (funcScript != script && !IsBaseOf(funcScript, script))
+				{
+					ReportError(ctx, expr->source,
+						"call to method without an object argument");
+				}
 			}
 		}
 
@@ -2183,14 +2245,15 @@ static void
 AnalyzeVariable(ACtx* ctx, struct Papyrus_Variable* variable)
 {
 	struct Papyrus_Expr* expr = variable->expr;
-	AnalyzeExpr(ctx, expr);
-
-	if ((expr->flags & Papyrus_ExprFlags_Const) == 0)
+	if (expr != NULL)
 	{
-		ReportError(ctx, 0, "field initializer must be constant");
+		AnalyzeExpr(ctx, expr);
+		if ((expr->flags & Papyrus_ExprFlags_Const) == 0)
+		{
+			ReportError(ctx, 0, "field initializer must be constant");
+		}
+		ImplicitCast(ctx, expr, variable->type);
 	}
-
-	ImplicitCast(ctx, expr, variable->type);
 }
 
 static void
@@ -2198,6 +2261,7 @@ AnalyzeFunction(ACtx* ctx, struct Papyrus_Function* function)
 {
 	ctx->returnType = function->signature.returnType;
 	ctx->locals = function->locals.data;
+	ctx->global = function->symbol.eflags & Papyrus_FunctionFlags_Global;
 	AnalyzeScope(ctx, function->scope);
 }
 
